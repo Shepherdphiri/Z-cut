@@ -8,7 +8,8 @@ import {
   Scan, 
   Flame, 
   Sliders,
-  AudioWaveform
+  AudioWaveform,
+  Subtitles
 } from 'lucide-react';
 import { 
   VideoClip, 
@@ -22,6 +23,8 @@ import { audioSynth } from '../utils/audioSynth';
 interface VerticalVideoPlayerProps {
   clip: VideoClip;
   videoSrc: string;
+  subtitlesEnabled?: boolean;
+  onToggleSubtitles?: (enabled: boolean) => void;
   captionStyle: CaptionStyle;
   captionPosition: CaptionPosition;
   captionFontSize: number;
@@ -33,11 +36,14 @@ interface VerticalVideoPlayerProps {
   musicVolume: number;
   manualPanOffset: number;
   onTimeUpdate?: (currentTime: number) => void;
+  onOpenUploader?: () => void;
 }
 
 export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
   clip,
   videoSrc,
+  subtitlesEnabled = true,
+  onToggleSubtitles,
   captionStyle,
   captionPosition,
   captionFontSize,
@@ -48,9 +54,11 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
   speechVolume,
   musicVolume,
   manualPanOffset,
-  onTimeUpdate
+  onTimeUpdate,
+  onOpenUploader
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const speakerBVideoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(clip.duration || 30);
@@ -58,20 +66,46 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
   const [isDuckingActive, setIsDuckingActive] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
+  const [localSubtitlesEnabled, setLocalSubtitlesEnabled] = useState(true);
 
-  // Sync with clip boundaries
+  const effectiveSubtitlesEnabled = subtitlesEnabled !== undefined ? subtitlesEnabled : localSubtitlesEnabled;
+
+  const handleToggleSubtitles = () => {
+    const next = !effectiveSubtitlesEnabled;
+    if (onToggleSubtitles) {
+      onToggleSubtitles(next);
+    } else {
+      setLocalSubtitlesEnabled(next);
+    }
+  };
+
+  // Sync with clip boundaries & reset errors on source change
   useEffect(() => {
+    setHasVideoError(false);
+    setVideoLoaded(false);
     if (videoRef.current) {
-      videoRef.current.currentTime = clip.startTime;
+      try {
+        videoRef.current.currentTime = Math.max(0, clip.startTime);
+        if (speakerBVideoRef.current) {
+          speakerBVideoRef.current.currentTime = Math.max(0, clip.startTime);
+        }
+      } catch (e) {
+        console.warn('Seek error:', e);
+      }
       setCurrentTime(0);
       setDuration(clip.duration);
     }
-  }, [clip.id, clip.startTime, clip.duration]);
+  }, [videoSrc, clip.id, clip.startTime, clip.duration]);
 
   // Handle active audio track and ducking
   useEffect(() => {
     if (isPlaying && activeAudioTrack) {
-      audioSynth.playTrack(activeAudioTrack.audioTone, musicVolume, isDuckingActive && audioDuckingEnabled);
+      audioSynth.playTrack(
+        activeAudioTrack.audioTone, 
+        musicVolume, 
+        isDuckingActive && audioDuckingEnabled,
+        activeAudioTrack.customAudioUrl
+      );
     } else if (!isPlaying) {
       audioSynth.stop();
     }
@@ -120,14 +154,21 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
     const vTime = videoRef.current.currentTime;
     const clipTime = vTime - clip.startTime;
 
+    // Keep secondary split screen in sync
+    if (speakerBVideoRef.current && Math.abs(speakerBVideoRef.current.currentTime - vTime) > 0.25) {
+      speakerBVideoRef.current.currentTime = vTime;
+    }
+
     if (clipTime >= duration || vTime >= clip.endTime) {
-      videoRef.current.currentTime = clip.startTime;
+      videoRef.current.currentTime = Math.max(0, clip.startTime);
+      if (speakerBVideoRef.current) speakerBVideoRef.current.currentTime = Math.max(0, clip.startTime);
       setCurrentTime(0);
       return;
     }
 
     if (clipTime < 0) {
-      videoRef.current.currentTime = clip.startTime;
+      videoRef.current.currentTime = Math.max(0, clip.startTime);
+      if (speakerBVideoRef.current) speakerBVideoRef.current.currentTime = Math.max(0, clip.startTime);
       setCurrentTime(0);
       return;
     }
@@ -146,14 +187,32 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
     if (!videoRef.current) return;
     if (isPlaying) {
       videoRef.current.pause();
+      if (speakerBVideoRef.current) speakerBVideoRef.current.pause();
       setIsPlaying(false);
     } else {
-      videoRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch((e) => {
-        console.warn('Playback caught:', e);
-        setIsPlaying(true);
-      });
+      const vTime = videoRef.current.currentTime;
+      if (vTime >= clip.endTime || vTime < clip.startTime) {
+        videoRef.current.currentTime = Math.max(0, clip.startTime);
+        if (speakerBVideoRef.current) speakerBVideoRef.current.currentTime = Math.max(0, clip.startTime);
+      }
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+            if (speakerBVideoRef.current) {
+              speakerBVideoRef.current.play().catch(() => {});
+            }
+          })
+          .catch((e) => {
+            console.warn('Playback error caught:', e);
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              setIsMuted(true);
+              videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+            }
+          });
+      }
     }
   };
 
@@ -162,6 +221,9 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
     setCurrentTime(newRelativeTime);
     if (videoRef.current) {
       videoRef.current.currentTime = clip.startTime + newRelativeTime;
+    }
+    if (speakerBVideoRef.current) {
+      speakerBVideoRef.current.currentTime = clip.startTime + newRelativeTime;
     }
   };
 
@@ -217,7 +279,25 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
         </div>
 
         {/* Main Video Element with Subject Tracking */}
-        {clip.framing.mode === 'dual_split' ? (
+        {!videoSrc ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-950 z-20">
+            <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-neutral-800 text-rose-500 flex items-center justify-center mb-3">
+              <Scan className="w-7 h-7" />
+            </div>
+            <h4 className="font-bold text-sm text-white font-['Outfit']">No Local Movie Loaded</h4>
+            <p className="text-xs text-neutral-400 mt-1 max-w-[220px]">
+              Select a video file from local storage to preview the vertical 9:16 cut.
+            </p>
+            {onOpenUploader && (
+              <button
+                onClick={onOpenUploader}
+                className="mt-4 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg transition-all"
+              >
+                Browse Local Storage
+              </button>
+            )}
+          </div>
+        ) : clip.framing.mode === 'dual_split' ? (
           // Dual vertical split screen (Speaker A top, Speaker B bottom)
           <div className="absolute inset-0 flex flex-col z-10">
             <div className="relative flex-1 overflow-hidden border-b-2 border-neutral-900">
@@ -228,8 +308,13 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
                 loop
                 muted={isMuted}
                 onTimeUpdate={handleTimeUpdate}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
                 onError={() => setHasVideoError(true)}
-                onLoadedData={() => setVideoLoaded(true)}
+                onLoadedData={() => {
+                  setVideoLoaded(true);
+                  setHasVideoError(false);
+                }}
                 style={{
                   filter: getColorGradeFilter(),
                   transform: `scale(${clip.framing.zoomFactor * 1.8}) translateX(${-25}%)`,
@@ -243,6 +328,7 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
             </div>
             <div className="relative flex-1 overflow-hidden">
               <video
+                ref={speakerBVideoRef}
                 src={videoSrc}
                 playsInline
                 loop
@@ -269,8 +355,15 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
               loop
               muted={isMuted}
               onTimeUpdate={handleTimeUpdate}
-              onError={() => setHasVideoError(true)}
-              onLoadedData={() => setVideoLoaded(true)}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onError={() => {
+                if (videoSrc) setHasVideoError(true);
+              }}
+              onLoadedData={() => {
+                setVideoLoaded(true);
+                setHasVideoError(false);
+              }}
               style={{
                 filter: getColorGradeFilter(),
                 height: '100%',
@@ -283,19 +376,24 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
           </div>
         )}
 
-        {/* Fallback Simulation Card if offline or source error */}
-        {hasVideoError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-black z-10">
+        {/* Local Video Error Notice */}
+        {hasVideoError && videoSrc && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-black z-20">
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
               <Scan className="w-6 h-6" />
             </div>
-            <p className="font-bold text-sm text-white font-['Outfit']">{clip.title}</p>
-            <p className="text-xs text-neutral-400 mt-1">
-              Smart Framing Active (Pan: {currentPan.toFixed(2)})
+            <p className="font-bold text-sm text-white font-['Outfit']">Playback Issue</p>
+            <p className="text-xs text-neutral-400 mt-1 max-w-[200px]">
+              This local file format or codec might not be supported directly by your browser.
             </p>
-            <span className="mt-3 px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 text-[10px] font-mono font-bold">
-              {currentTime.toFixed(1)}s / {duration.toFixed(1)}s
-            </span>
+            {onOpenUploader && (
+              <button
+                onClick={onOpenUploader}
+                className="mt-3 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-200 border border-neutral-700"
+              >
+                Choose Another Video
+              </button>
+            )}
           </div>
         )}
 
@@ -309,8 +407,8 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
         )}
 
         {/* Dynamic Auto-Caption Overlay (Word-by-Word Karaoke Style) */}
-        {activeLine && (
-          <div className={`absolute ${getCaptionPositionClass()} left-3 right-3 z-30 flex justify-center pointer-events-none px-2`}>
+        {effectiveSubtitlesEnabled && activeLine && (
+          <div className={`absolute ${getCaptionPositionClass()} left-3 right-3 z-30 flex justify-center pointer-events-none px-2 animate-in fade-in duration-150`}>
             {captionStyle === 'hormozi' && (
               <div className="bg-black/75 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/20 text-center max-w-[95%] shadow-xl">
                 <p 
@@ -411,6 +509,27 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
           </span>
         </div>
 
+        {/* Subtitles Quick Toggle Pill (Top Overlay) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleSubtitles();
+          }}
+          className={`absolute ${
+            template.watermark.enabled && template.watermark.text && template.watermark.position === 'top-right'
+              ? 'top-11 right-4'
+              : 'top-4 right-4'
+          } z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold transition-all shadow-lg active:scale-95 cursor-pointer ${
+            effectiveSubtitlesEnabled
+              ? 'bg-black/75 backdrop-blur text-emerald-400 border-emerald-500/40 hover:bg-neutral-900'
+              : 'bg-black/85 backdrop-blur text-neutral-400 border-neutral-700 hover:text-white'
+          }`}
+          title={effectiveSubtitlesEnabled ? 'Subtitles are ON. Click to turn OFF' : 'Subtitles are OFF. Click to turn ON'}
+        >
+          <Subtitles className="w-3 h-3" />
+          <span>{effectiveSubtitlesEnabled ? 'CC ON' : 'CC OFF'}</span>
+        </button>
+
         {/* Audio Ducking Indicator Badge */}
         {audioDuckingEnabled && isDuckingActive && activeAudioTrack && (
           <div className="absolute bottom-16 left-4 z-20 flex items-center gap-1 bg-amber-500 text-black px-2 py-0.5 rounded-full text-[9px] font-extrabold shadow-lg pointer-events-none">
@@ -502,6 +621,25 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
               title={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* Subtitles ON/OFF Button (CC) */}
+            <button
+              onClick={handleToggleSubtitles}
+              id="btn-subtitles-toggle"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 border ${
+                effectiveSubtitlesEnabled
+                  ? 'bg-rose-950/40 text-rose-400 border-rose-500/40 hover:bg-rose-900/50'
+                  : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:text-neutral-300'
+              }`}
+              title={effectiveSubtitlesEnabled ? 'Subtitles are ON. Click to turn OFF (CC)' : 'Subtitles are OFF. Click to turn ON (CC)'}
+            >
+              <div className="relative flex items-center justify-center">
+                <Subtitles className="w-4 h-4" />
+                {!effectiveSubtitlesEnabled && (
+                  <div className="absolute w-5 h-0.5 bg-rose-500 -rotate-45 rounded" />
+                )}
+              </div>
             </button>
           </div>
 

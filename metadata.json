@@ -1,6 +1,6 @@
 {
   "name": "Z-cut",
   "description": "Automated long-to-short vertical video converter with smart AI framing, auto-captions, trending audio, branded templates, and direct social media export.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

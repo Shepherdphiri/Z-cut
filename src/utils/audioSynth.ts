@@ -10,6 +10,9 @@ class AudioSynthesizer {
   private currentTrackId: string | null = null;
   private masterGain: GainNode | null = null;
   private duckingGain: GainNode | null = null;
+  private customAudioEl: HTMLAudioElement | null = null;
+  private currentVolume: number = 0.5;
+  private isDucked: boolean = false;
 
   private init() {
     if (!this.ctx) {
@@ -26,13 +29,29 @@ class AudioSynthesizer {
     }
   }
 
-  public playTrack(trackTone: string, volume: number = 0.5, ducked: boolean = false) {
+  public playTrack(trackTone: string, volume: number = 0.5, ducked: boolean = false, customAudioUrl?: string) {
     this.init();
-    if (!this.ctx || !this.masterGain || !this.duckingGain) return;
-
     this.stop();
     this.isPlaying = true;
     this.currentTrackId = trackTone;
+    this.currentVolume = volume;
+    this.isDucked = ducked;
+
+    // If custom audio URL (local file or recorded voiceover)
+    if (customAudioUrl || trackTone === 'custom_file') {
+      const audioUrl = customAudioUrl;
+      if (!audioUrl) return;
+      if (!this.customAudioEl) {
+        this.customAudioEl = new Audio();
+        this.customAudioEl.loop = true;
+      }
+      this.customAudioEl.src = audioUrl;
+      this.customAudioEl.volume = Math.max(0, Math.min(1, volume * (ducked ? 0.25 : 1.0)));
+      this.customAudioEl.play().catch(e => console.warn('Custom audio play error:', e));
+      return;
+    }
+
+    if (!this.ctx || !this.masterGain || !this.duckingGain) return;
 
     this.masterGain.gain.setValueAtTime(volume, this.ctx.currentTime);
     this.setDucking(ducked ? 0.25 : 1.0);
@@ -111,13 +130,21 @@ class AudioSynthesizer {
   }
 
   public setDucking(multiplier: number) {
+    this.isDucked = multiplier < 0.5;
+    if (this.customAudioEl) {
+      this.customAudioEl.volume = Math.max(0, Math.min(1, this.currentVolume * multiplier));
+    }
     if (!this.ctx || !this.duckingGain) return;
     this.duckingGain.gain.setTargetAtTime(multiplier, this.ctx.currentTime, 0.15);
   }
 
   public setVolume(val: number) {
+    this.currentVolume = Math.max(0, Math.min(1, val));
+    if (this.customAudioEl) {
+      this.customAudioEl.volume = this.currentVolume * (this.isDucked ? 0.25 : 1.0);
+    }
     if (!this.ctx || !this.masterGain) return;
-    this.masterGain.gain.setValueAtTime(Math.max(0, Math.min(1, val)), this.ctx.currentTime);
+    this.masterGain.gain.setValueAtTime(this.currentVolume, this.ctx.currentTime);
   }
 
   public stop() {
@@ -126,6 +153,10 @@ class AudioSynthesizer {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
+    }
+    if (this.customAudioEl) {
+      this.customAudioEl.pause();
+      this.customAudioEl.currentTime = 0;
     }
   }
 

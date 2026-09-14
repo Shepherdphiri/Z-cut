@@ -59,11 +59,13 @@ export interface AudioTrack {
   id: string;
   title: string;
   artist: string;
-  category: 'trending' | 'cinematic' | 'lofi' | 'phonk' | 'upbeat';
+  category: 'trending' | 'cinematic' | 'lofi' | 'phonk' | 'upbeat' | 'custom';
   durationSeconds: number;
   bpm: number;
   waveform: number[];
-  audioTone: 'synth_bass' | 'piano_chill' | 'tension_pulse' | 'phonk_groove' | 'upbeat_fun';
+  audioTone: 'synth_bass' | 'piano_chill' | 'tension_pulse' | 'phonk_groove' | 'upbeat_fun' | 'custom_file';
+  customAudioUrl?: string;
+  isVoiceover?: boolean;
 }
 
 export interface TemplateConfig {

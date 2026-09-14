@@ -18,6 +18,7 @@ interface SmartFramingInspectorProps {
   onManualPanChange: (val: number) => void;
   videoSrc: string;
   movieThumbnail: string;
+  currentPlayTime?: number;
 }
 
 export const SmartFramingInspector: React.FC<SmartFramingInspectorProps> = ({
@@ -25,8 +26,22 @@ export const SmartFramingInspector: React.FC<SmartFramingInspectorProps> = ({
   onChangeFraming,
   manualPanOffset,
   onManualPanChange,
-  movieThumbnail
+  videoSrc,
+  movieThumbnail,
+  currentPlayTime = 0
 }) => {
+  const inspectorVideoRef = React.useRef<HTMLVideoElement>(null);
+  const [videoPlayFailed, setVideoPlayFailed] = React.useState(false);
+
+  // Sync inspection video time when currentPlayTime changes
+  React.useEffect(() => {
+    if (inspectorVideoRef.current && !isNaN(currentPlayTime)) {
+      // Only seek if difference is noticeable to avoid stutter
+      if (Math.abs(inspectorVideoRef.current.currentTime - currentPlayTime) > 0.6) {
+        inspectorVideoRef.current.currentTime = currentPlayTime;
+      }
+    }
+  }, [currentPlayTime]);
   const modes: { id: FramingMode; label: string; desc: string; icon: any }[] = [
     {
       id: 'speaker_tracking',
@@ -132,33 +147,51 @@ export const SmartFramingInspector: React.FC<SmartFramingInspectorProps> = ({
           </span>
         </div>
 
-        {/* 16:9 Cinema Canvas Simulator */}
-        <div className="relative aspect-[16/9] w-full max-w-md mx-auto rounded-lg overflow-hidden border border-neutral-800 bg-black flex items-center justify-center">
-          <img
-            src={movieThumbnail}
-            alt="Source Frame"
-            className="w-full h-full object-cover opacity-60"
-          />
+        {/* 16:9 Cinema Canvas Simulator with Real Local Movie */}
+        <div className="relative aspect-[16/9] w-full max-w-md mx-auto rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950 flex items-center justify-center">
+          {videoSrc && !videoPlayFailed ? (
+            <video
+              ref={inspectorVideoRef}
+              src={videoSrc}
+              playsInline
+              muted
+              loop
+              autoPlay
+              onError={() => setVideoPlayFailed(true)}
+              className="w-full h-full object-cover"
+            />
+          ) : movieThumbnail ? (
+            <img
+              src={movieThumbnail}
+              alt="Source Frame"
+              className="w-full h-full object-cover opacity-80"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-neutral-500 text-xs gap-1">
+              <span>Local Movie Canvas</span>
+              <span className="text-[10px] text-neutral-600">Select or drop a local file</span>
+            </div>
+          )}
 
           {/* 9:16 Vertical Box representing the cropped region */}
           <div
-            className="absolute top-0 bottom-0 aspect-[9/16] border-2 border-rose-500 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.3)] transition-all duration-150 flex flex-col justify-between p-1"
+            className="absolute top-0 bottom-0 aspect-[9/16] border-2 border-rose-500 bg-rose-500/15 shadow-[0_0_18px_rgba(244,63,94,0.35)] transition-all duration-150 flex flex-col justify-between p-1 pointer-events-none"
             style={{
-              left: `${50 + manualPanOffset * 25}%`,
+              left: `${50 + manualPanOffset * 28}%`,
               transform: 'translateX(-50%)'
             }}
           >
-            <div className="flex justify-between items-center text-[8px] font-bold text-white bg-rose-600 px-1 rounded">
+            <div className="flex justify-between items-center text-[8px] font-bold text-white bg-rose-600/95 px-1 py-0.5 rounded shadow">
               <span>9:16 CROP</span>
               <span>LIVE</span>
             </div>
 
             <div className="w-full text-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mx-auto" />
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mx-auto shadow ring-2 ring-white/40" />
             </div>
 
-            <div className="text-[8px] font-mono text-center text-rose-300 bg-black/60 rounded">
-              Subject Lock
+            <div className="text-[8px] font-mono text-center text-rose-200 bg-black/70 px-1 py-0.5 rounded backdrop-blur">
+              {framing.mode === 'speaker_tracking' ? 'Speaker Tracking' : framing.mode === 'dual_split' ? 'Split Focus' : 'Center Lock'}
             </div>
           </div>
         </div>

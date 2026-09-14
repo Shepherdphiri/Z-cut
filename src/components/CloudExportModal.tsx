@@ -10,7 +10,8 @@ import {
   Layers, 
   Check, 
   Zap,
-  HardDrive
+  HardDrive,
+  Subtitles
 } from 'lucide-react';
 import { VideoClip, TemplateConfig, AudioTrack } from '../types';
 
@@ -20,6 +21,9 @@ interface CloudExportModalProps {
   template: TemplateConfig;
   activeAudioTrack: AudioTrack | null;
   videoSrc: string;
+  subtitlesEnabled?: boolean;
+  isPremium?: boolean;
+  onOpenUpgrade?: () => void;
   onClose: () => void;
 }
 
@@ -29,6 +33,9 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
   template,
   activeAudioTrack,
   videoSrc,
+  subtitlesEnabled = true,
+  isPremium = false,
+  onOpenUpgrade,
   onClose
 }) => {
   const [resolution, setResolution] = useState<'1080x1920' | '2160x3840' | '720x1280'>('1080x1920');
@@ -40,6 +47,7 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
   const [downloadReady, setDownloadReady] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [isBatchMode, setIsBatchMode] = useState(false);
+  const [burnInSubtitles, setBurnInSubtitles] = useState(subtitlesEnabled);
 
   const resolutions = [
     {
@@ -237,29 +245,59 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            {/* Batch Export Option */}
-            <div className="p-3 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Layers className="w-4 h-4 text-amber-400" />
-                <div>
-                  <p className="text-xs font-bold text-white">Batch Export Mode</p>
-                  <p className="text-[10px] text-neutral-400">
-                    Export all {allClips.length} extracted viral clips at once into a ZIP bundle
-                  </p>
+            {/* Options Row: Batch Mode & Subtitles Toggle */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Batch Export Option */}
+              <div className="p-3 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Layers className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <p className="text-xs font-bold text-white">Batch Export</p>
+                    <p className="text-[10px] text-neutral-400">
+                      {isPremium 
+                        ? `Export all ${allClips.length} movie clips into ZIP`
+                        : `Export up to ${Math.min(5, allClips.length)} free clips (Upgrade for all ${allClips.length})`}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <button
-                onClick={() => setIsBatchMode(!isBatchMode)}
-                className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
-                  isBatchMode ? 'bg-rose-600' : 'bg-neutral-800'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                    isBatchMode ? 'translate-x-4' : 'translate-x-0'
+                <button
+                  onClick={() => setIsBatchMode(!isBatchMode)}
+                  className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                    isBatchMode ? 'bg-rose-600' : 'bg-neutral-800'
                   }`}
-                />
-              </button>
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                      isBatchMode ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Subtitles Option */}
+              <div className="p-3 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Subtitles className={`w-4 h-4 ${burnInSubtitles ? 'text-rose-400' : 'text-neutral-500'}`} />
+                  <div>
+                    <p className="text-xs font-bold text-white">Burn-in Subtitles</p>
+                    <p className="text-[10px] text-neutral-400">
+                      {burnInSubtitles ? 'Burned into video' : 'Clean export without text'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBurnInSubtitles(!burnInSubtitles)}
+                  className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                    burnInSubtitles ? 'bg-rose-600' : 'bg-neutral-800'
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                      burnInSubtitles ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
 
             {/* Resolution Presets */}

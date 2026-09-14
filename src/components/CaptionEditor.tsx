@@ -5,11 +5,16 @@ import {
   Palette, 
   Clock, 
   Check, 
-  Sliders
+  Sliders,
+  Subtitles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { CaptionStyle, CaptionPosition, DialogueLine } from '../types';
 
 interface CaptionEditorProps {
+  subtitlesEnabled?: boolean;
+  onToggleSubtitles?: (enabled: boolean) => void;
   captionStyle: CaptionStyle;
   onChangeStyle: (style: CaptionStyle) => void;
   captionPosition: CaptionPosition;
@@ -23,6 +28,8 @@ interface CaptionEditorProps {
 }
 
 export const CaptionEditor: React.FC<CaptionEditorProps> = ({
+  subtitlesEnabled = true,
+  onToggleSubtitles,
   captionStyle,
   onChangeStyle,
   captionPosition,
@@ -76,23 +83,85 @@ export const CaptionEditor: React.FC<CaptionEditorProps> = ({
 
   return (
     <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-neutral-800 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-neutral-800 text-rose-400 border border-neutral-700">
-            <Type className="w-4 h-4" />
+      {/* Header with On/Off Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-800 mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 rounded-xl border transition-colors ${
+            subtitlesEnabled 
+              ? 'bg-rose-950/40 text-rose-400 border-rose-500/40' 
+              : 'bg-neutral-800/80 text-neutral-400 border-neutral-700'
+          }`}>
+            <Subtitles className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-bold text-sm font-['Outfit']">Auto-Captions & Subtitles</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm font-['Outfit']">Auto-Captions & Subtitles</h3>
+              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border transition-all ${
+                subtitlesEnabled 
+                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/40' 
+                  : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+              }`}>
+                {subtitlesEnabled ? 'SUBTITLES ON' : 'SUBTITLES OFF'}
+              </span>
+            </div>
             <p className="text-[11px] text-neutral-400">
-              Word-by-word synchronized subtitles with customizable visual styles.
+              Word-by-word synchronized subtitles formatted for TikTok and Reels.
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
-          Audio Sync
-        </span>
+
+        {/* Master ON/OFF Switch */}
+        {onToggleSubtitles && (
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <span className="text-xs font-semibold text-neutral-300">
+              {subtitlesEnabled ? 'Enabled' : 'Disabled'}
+            </span>
+            <button
+              type="button"
+              id="toggle-subtitles-btn"
+              onClick={() => onToggleSubtitles(!subtitlesEnabled)}
+              className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-neutral-900 ${
+                subtitlesEnabled ? 'bg-rose-600' : 'bg-neutral-700'
+              }`}
+              role="switch"
+              aria-checked={subtitlesEnabled}
+              title={subtitlesEnabled ? 'Click to turn subtitles OFF' : 'Click to turn subtitles ON'}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  subtitlesEnabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* When Subtitles are OFF Alert Banner */}
+      {!subtitlesEnabled && (
+        <div className="mb-4 p-3.5 rounded-xl bg-neutral-950/90 border border-neutral-700/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-neutral-800 text-neutral-400">
+              <EyeOff className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-neutral-200">Subtitles are turned OFF</p>
+              <p className="text-[11px] text-neutral-400">
+                Videos will play cleanly and export without overlaying text captions.
+              </p>
+            </div>
+          </div>
+          {onToggleSubtitles && (
+            <button
+              onClick={() => onToggleSubtitles(true)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 shadow transition-all active:scale-95"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Turn Subtitles ON</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Style Preset Selector */}
       <div className="mb-4">

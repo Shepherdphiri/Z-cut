@@ -9,7 +9,10 @@ import {
   Check, 
   Film,
   Camera,
-  Layers
+  Layers,
+  Crown,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { TemplateConfig } from '../types';
 import { TEMPLATE_PRESETS } from '../data/audioLibrary';
@@ -17,11 +20,15 @@ import { TEMPLATE_PRESETS } from '../data/audioLibrary';
 interface BrandingTemplateDrawerProps {
   template: TemplateConfig;
   onChangeTemplate: (updated: TemplateConfig) => void;
+  isPremium?: boolean;
+  onOpenUpgrade?: () => void;
 }
 
 export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
   template,
-  onChangeTemplate
+  onChangeTemplate,
+  isPremium = false,
+  onOpenUpgrade
 }) => {
   const colorGrades = [
     { id: 'none', label: 'Original Rec.709', desc: 'Natural cinema colors' },
@@ -32,6 +39,10 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
   ];
 
   const handleApplyPreset = (preset: any) => {
+    if (!isPremium) {
+      onOpenUpgrade?.();
+      return;
+    }
     onChangeTemplate({
       ...template,
       ...preset,
@@ -42,7 +53,40 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
   };
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-white">
+    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-white relative overflow-hidden">
+      {/* Premium Gate Banner if not premium */}
+      {!isPremium && (
+        <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/50 via-neutral-950 to-rose-950/40 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <Crown className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-black text-white font-['Outfit']">
+                  Branding & Watermark Removal is a PRO Feature
+                </h4>
+                <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-300 border border-amber-500/40">
+                  PRO ONLY
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-300 mt-0.5">
+                Upgrade to PRO to customize channel watermarks, add viral hook banners, and set custom LUT grades.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenUpgrade}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 text-white text-xs font-bold shrink-0 flex items-center gap-1.5 shadow active:scale-95 transition-all"
+          >
+            <Crown className="w-3.5 h-3.5" />
+            <span>Unlock Branding</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-neutral-800 mb-4">
         <div className="flex items-center gap-2">
@@ -50,7 +94,14 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
             <Layers className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-bold text-sm font-['Outfit']">Branded Visual Overlays & Intros</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm font-['Outfit']">Branded Visual Overlays & Intros</h3>
+              {!isPremium && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" /> PRO
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-neutral-400">
               Customize high-retention hook banners, progress bars, and cinematic color grades.
             </p>
@@ -58,166 +109,71 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
         </div>
       </div>
 
-      {/* Template Presets */}
-      <div className="mb-4">
-        <label className="text-xs font-semibold text-neutral-300 mb-2 block">
-          Branded Preset Styles
-        </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          {TEMPLATE_PRESETS.map((tp) => {
-            const isMatch = template.name === tp.name;
-            return (
-              <button
-                key={tp.id}
-                onClick={() => handleApplyPreset(tp)}
-                className={`p-2.5 rounded-xl border text-left transition-all ${
-                  isMatch
-                    ? 'border-rose-500 bg-rose-950/25 ring-1 ring-rose-500/50'
-                    : 'border-neutral-800 bg-neutral-950/50 hover:border-neutral-700'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white font-['Outfit']">{tp.name}</span>
-                  {isMatch && <Check className="w-3.5 h-3.5 text-rose-400 stroke-[3]" />}
-                </div>
-                <div className="flex items-center gap-1 mt-2 text-[10px] text-neutral-400">
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tp.progressBar.color }} />
-                  <span>{tp.progressBar.color}</span>
-                  <span>•</span>
-                  <span>{tp.colorGrade}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Viral Hook Intro Config */}
-      <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-3 mb-4 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold text-neutral-200">First-3-Seconds Viral Hook Banner</span>
+      {/* Content wrapper with disabled state if free */}
+      <div className={`space-y-4 transition-opacity ${!isPremium ? 'opacity-80' : ''}`}>
+        {/* Template Presets */}
+        <div>
+          <label className="text-xs font-semibold text-neutral-300 mb-2 block">
+            Branded Preset Styles
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {TEMPLATE_PRESETS.map((tp) => {
+              const isMatch = template.name === tp.name;
+              return (
+                <button
+                  key={tp.id}
+                  onClick={() => handleApplyPreset(tp)}
+                  className={`p-2.5 rounded-xl border text-left transition-all relative ${
+                    isMatch
+                      ? 'border-rose-500 bg-rose-950/25 ring-1 ring-rose-500/50'
+                      : 'border-neutral-800 bg-neutral-950/50 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white font-['Outfit']">{tp.name}</span>
+                    {isMatch ? (
+                      <Check className="w-3.5 h-3.5 text-rose-400 stroke-[3]" />
+                    ) : !isPremium ? (
+                      <Lock className="w-3 h-3 text-neutral-500" />
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-1 mt-2 text-[10px] text-neutral-400">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tp.progressBar.color }} />
+                    <span>{tp.progressBar.color}</span>
+                    <span>•</span>
+                    <span>{tp.colorGrade}</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
-          <button
-            onClick={() =>
-              onChangeTemplate({
-                ...template,
-                hookIntro: { ...template.hookIntro, enabled: !template.hookIntro.enabled }
-              })
-            }
-            className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
-              template.hookIntro.enabled ? 'bg-rose-600' : 'bg-neutral-800'
-            }`}
-          >
-            <div
-              className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                template.hookIntro.enabled ? 'translate-x-4' : 'translate-x-0'
-              }`}
-            />
-          </button>
         </div>
 
-        {template.hookIntro.enabled && (
-          <div className="space-y-2 pt-1">
-            <input
-              type="text"
-              value={template.hookIntro.text}
-              onChange={(e) =>
-                onChangeTemplate({
-                  ...template,
-                  hookIntro: { ...template.hookIntro, text: e.target.value }
-                })
-              }
-              placeholder="e.g. WAIT TILL THE END 😱"
-              className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500 font-bold"
-            />
-            <div className="flex items-center justify-between text-[11px] text-neutral-400">
-              <span>Display Duration</span>
-              <span className="font-mono">{template.hookIntro.duration} seconds</span>
+        {/* Viral Hook Intro Config */}
+        <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-neutral-200">First-3-Seconds Viral Hook Banner</span>
             </div>
-            <input
-              type="range"
-              min="1.5"
-              max="5"
-              step="0.5"
-              value={template.hookIntro.duration}
-              onChange={(e) =>
-                onChangeTemplate({
-                  ...template,
-                  hookIntro: { ...template.hookIntro, duration: parseFloat(e.target.value) }
-                })
-              }
-              className="w-full accent-rose-500 h-1.5 bg-neutral-800 rounded-lg cursor-pointer"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Progress Bar & Watermark Customization */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        {/* Progress Bar */}
-        <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-neutral-200">Animated Progress Bar</span>
             <button
-              onClick={() =>
-                onChangeTemplate({
-                  ...template,
-                  progressBar: { ...template.progressBar, enabled: !template.progressBar.enabled }
-                })
-              }
-              className={`w-8 h-4.5 rounded-full transition-colors relative p-0.5 ${
-                template.progressBar.enabled ? 'bg-rose-600' : 'bg-neutral-800'
-              }`}
-            >
-              <div
-                className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${
-                  template.progressBar.enabled ? 'translate-x-3.5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 mt-2">
-            {['#E11D48', '#3B82F6', '#10B981', '#F59E0B', '#FFFFFF'].map((color) => (
-              <button
-                key={color}
-                onClick={() =>
-                  onChangeTemplate({
-                    ...template,
-                    progressBar: { ...template.progressBar, color }
-                  })
+              onClick={() => {
+                if (!isPremium) {
+                  onOpenUpgrade?.();
+                  return;
                 }
-                className={`w-6 h-6 rounded-full border-2 transition-transform ${
-                  template.progressBar.color === color
-                    ? 'scale-110 border-white shadow'
-                    : 'border-transparent opacity-60'
-                }`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Watermark Handle */}
-        <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-neutral-200">Channel / Watermark Tag</span>
-            <button
-              onClick={() =>
                 onChangeTemplate({
                   ...template,
-                  watermark: { ...template.watermark, enabled: !template.watermark.enabled }
-                })
-              }
+                  hookIntro: { ...template.hookIntro, enabled: !template.hookIntro.enabled }
+                });
+              }}
               className={`w-8 h-4.5 rounded-full transition-colors relative p-0.5 ${
-                template.watermark.enabled ? 'bg-rose-600' : 'bg-neutral-800'
+                template.hookIntro.enabled && isPremium ? 'bg-rose-600' : 'bg-neutral-800'
               }`}
             >
               <div
                 className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${
-                  template.watermark.enabled ? 'translate-x-3.5' : 'translate-x-0'
+                  template.hookIntro.enabled && isPremium ? 'translate-x-3.5' : 'translate-x-0'
                 }`}
               />
             </button>
@@ -225,40 +181,136 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
 
           <input
             type="text"
-            value={template.watermark.text}
+            disabled={!isPremium}
+            value={template.hookIntro.text}
             onChange={(e) =>
               onChangeTemplate({
                 ...template,
-                watermark: { ...template.watermark, text: e.target.value }
+                hookIntro: { ...template.hookIntro, text: e.target.value }
               })
             }
-            placeholder="@your_channel"
-            className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-rose-500"
+            placeholder="e.g. 🚨 WAIT FOR THE TWIST"
+            className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500 disabled:cursor-not-allowed"
           />
         </div>
-      </div>
 
-      {/* Cinematic Color Grade Filter */}
-      <div>
-        <label className="text-xs font-semibold text-neutral-300 mb-2 flex items-center gap-1.5">
-          <Camera className="w-3.5 h-3.5 text-rose-400" />
-          Cinematic Color Grade LUT
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-          {colorGrades.map((cg) => (
-            <button
-              key={cg.id}
-              onClick={() => onChangeTemplate({ ...template, colorGrade: cg.id as any })}
-              className={`p-2 rounded-xl text-left border transition-all ${
-                template.colorGrade === cg.id
-                  ? 'border-rose-500 bg-rose-950/30 text-white'
-                  : 'border-neutral-800 bg-neutral-950/40 text-neutral-400 hover:text-white'
-              }`}
-            >
-              <span className="text-[11px] font-bold block truncate font-['Outfit']">{cg.label}</span>
-              <span className="text-[9px] text-neutral-500 block truncate">{cg.desc}</span>
-            </button>
-          ))}
+        {/* Progress Bar & Watermark Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Progress Bar */}
+          <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-neutral-200">Retention Progress Bar</span>
+              <button
+                onClick={() => {
+                  if (!isPremium) {
+                    onOpenUpgrade?.();
+                    return;
+                  }
+                  onChangeTemplate({
+                    ...template,
+                    progressBar: { ...template.progressBar, enabled: !template.progressBar.enabled }
+                  });
+                }}
+                className={`w-8 h-4.5 rounded-full transition-colors relative p-0.5 ${
+                  template.progressBar.enabled && isPremium ? 'bg-rose-600' : 'bg-neutral-800'
+                }`}
+              >
+                <div
+                  className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${
+                    template.progressBar.enabled && isPremium ? 'translate-x-3.5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                disabled={!isPremium}
+                value={template.progressBar.color}
+                onChange={(e) =>
+                  onChangeTemplate({
+                    ...template,
+                    progressBar: { ...template.progressBar, color: e.target.value }
+                  })
+                }
+                className="w-7 h-7 rounded border border-neutral-700 bg-transparent cursor-pointer disabled:cursor-not-allowed"
+              />
+              <span className="text-xs font-mono text-neutral-400">{template.progressBar.color}</span>
+            </div>
+          </div>
+
+          {/* Watermark Handle */}
+          <div className="bg-neutral-950/70 border border-neutral-800 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-neutral-200">Channel / Watermark Tag</span>
+              <button
+                onClick={() => {
+                  if (!isPremium) {
+                    onOpenUpgrade?.();
+                    return;
+                  }
+                  onChangeTemplate({
+                    ...template,
+                    watermark: { ...template.watermark, enabled: !template.watermark.enabled }
+                  });
+                }}
+                className={`w-8 h-4.5 rounded-full transition-colors relative p-0.5 ${
+                  template.watermark.enabled && isPremium ? 'bg-rose-600' : 'bg-neutral-800'
+                }`}
+              >
+                <div
+                  className={`w-3.5 h-3.5 rounded-full bg-white transition-transform ${
+                    template.watermark.enabled && isPremium ? 'translate-x-3.5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <input
+              type="text"
+              disabled={!isPremium}
+              value={isPremium ? template.watermark.text : 'Z-cut Pro (Free Tier)'}
+              onChange={(e) =>
+                onChangeTemplate({
+                  ...template,
+                  watermark: { ...template.watermark, text: e.target.value }
+                })
+              }
+              placeholder="@your_channel"
+              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-rose-500 disabled:cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        {/* Cinematic Color Grade Filter */}
+        <div>
+          <label className="text-xs font-semibold text-neutral-300 mb-2 flex items-center gap-1.5">
+            <Camera className="w-3.5 h-3.5 text-rose-400" />
+            <span>Cinematic Color Grade LUT</span>
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+            {colorGrades.map((cg) => (
+              <button
+                key={cg.id}
+                onClick={() => {
+                  if (!isPremium) {
+                    onOpenUpgrade?.();
+                    return;
+                  }
+                  onChangeTemplate({ ...template, colorGrade: cg.id as any });
+                }}
+                className={`p-2 rounded-xl text-left border transition-all ${
+                  template.colorGrade === cg.id
+                    ? 'border-rose-500 bg-rose-950/30 text-white'
+                    : 'border-neutral-800 bg-neutral-950/40 text-neutral-400 hover:text-white'
+                }`}
+              >
+                <span className="text-[11px] font-bold block truncate font-['Outfit']">{cg.label}</span>
+                <span className="text-[9px] text-neutral-500 block truncate">{cg.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
