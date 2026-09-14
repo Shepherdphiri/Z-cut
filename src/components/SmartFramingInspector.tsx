@@ -7,7 +7,9 @@ import {
   Maximize2, 
   Layers, 
   Check, 
-  Sliders
+  Sliders,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { FramingConfig, FramingMode } from '../types';
 
@@ -138,62 +140,171 @@ export const SmartFramingInspector: React.FC<SmartFramingInspectorProps> = ({
         })}
       </div>
 
-      {/* Visual Crop Monitor (16:9 Movie frame with 9:16 Active Crop Box) */}
+      {/* Visual Crop / Fit Monitor */}
       <div className="mb-4 bg-neutral-950 p-3 rounded-xl border border-neutral-800">
         <div className="flex items-center justify-between text-xs text-neutral-400 mb-2">
-          <span className="font-semibold text-neutral-300">Widescreen 16:9 to 9:16 Crop Boundary</span>
-          <span className="font-mono text-[10px]">
-            Shift X: {manualPanOffset > 0 ? `+${(manualPanOffset * 100).toFixed(0)}%` : `${(manualPanOffset * 100).toFixed(0)}%`}
+          <span className="font-semibold text-neutral-300">
+            {framing.mode === 'fit_blur' ? '16:9 Full Frame with Ambient Blur' : 'Widescreen 16:9 to 9:16 Crop Boundary'}
           </span>
+          {framing.mode !== 'fit_blur' && (
+            <span className="font-mono text-[10px]">
+              Shift X: {manualPanOffset > 0 ? `+${(manualPanOffset * 100).toFixed(0)}%` : `${(manualPanOffset * 100).toFixed(0)}%`}
+            </span>
+          )}
         </div>
 
-        {/* 16:9 Cinema Canvas Simulator with Real Local Movie */}
-        <div className="relative aspect-[16/9] w-full max-w-md mx-auto rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950 flex items-center justify-center">
-          {videoSrc && !videoPlayFailed ? (
-            <video
-              ref={inspectorVideoRef}
-              src={videoSrc}
-              playsInline
-              muted
-              loop
-              autoPlay
-              onError={() => setVideoPlayFailed(true)}
-              className="w-full h-full object-cover"
-            />
-          ) : movieThumbnail ? (
-            <img
-              src={movieThumbnail}
-              alt="Source Frame"
-              className="w-full h-full object-cover opacity-80"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-neutral-500 text-xs gap-1">
-              <span>Local Movie Canvas</span>
-              <span className="text-[10px] text-neutral-600">Select or drop a local file</span>
-            </div>
-          )}
-
-          {/* 9:16 Vertical Box representing the cropped region */}
-          <div
-            className="absolute top-0 bottom-0 aspect-[9/16] border-2 border-rose-500 bg-rose-500/15 shadow-[0_0_18px_rgba(244,63,94,0.35)] transition-all duration-150 flex flex-col justify-between p-1 pointer-events-none"
-            style={{
-              left: `${50 + manualPanOffset * 28}%`,
-              transform: 'translateX(-50%)'
-            }}
-          >
-            <div className="flex justify-between items-center text-[8px] font-bold text-white bg-rose-600/95 px-1 py-0.5 rounded shadow">
-              <span>9:16 CROP</span>
-              <span>LIVE</span>
+        {framing.mode === 'fit_blur' ? (
+          /* 9:16 Simulator showing full 16:9 movie fitted with ambient blurred mirrors */
+          <div className="relative aspect-[9/16] h-52 mx-auto rounded-xl overflow-hidden border border-neutral-700 bg-black flex items-center justify-center shadow-xl">
+            {/* Ambient blurred wings */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {videoSrc && !videoPlayFailed ? (
+                <video
+                  src={videoSrc}
+                  playsInline
+                  muted
+                  loop
+                  autoPlay
+                  className="w-full h-full object-cover blur-xl scale-125 opacity-70"
+                />
+              ) : movieThumbnail ? (
+                <img
+                  src={movieThumbnail}
+                  alt="Ambient"
+                  className="w-full h-full object-cover blur-xl scale-125 opacity-70"
+                />
+              ) : (
+                <div className="w-full h-full bg-neutral-900 blur-xl" />
+              )}
+              <div className="absolute inset-0 bg-black/25" />
             </div>
 
-            <div className="w-full text-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mx-auto shadow ring-2 ring-white/40" />
+            {/* Widescreen 16:9 movie fitted horizontally */}
+            <div className="w-full aspect-video relative z-10 bg-black border-y border-white/20 shadow-2xl flex items-center justify-center">
+              {videoSrc && !videoPlayFailed ? (
+                <video
+                  ref={inspectorVideoRef}
+                  src={videoSrc}
+                  playsInline
+                  muted
+                  loop
+                  autoPlay
+                  onError={() => setVideoPlayFailed(true)}
+                  className="w-full h-full object-contain"
+                />
+              ) : movieThumbnail ? (
+                <img
+                  src={movieThumbnail}
+                  alt="Source Frame"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <span className="text-[10px] text-neutral-400">16:9 Movie Fitted</span>
+              )}
+              <div className="absolute top-1 right-1 text-[8px] font-black px-1.5 py-0.5 rounded bg-black/70 text-amber-300">
+                16:9 FIT
+              </div>
             </div>
 
-            <div className="text-[8px] font-mono text-center text-rose-200 bg-black/70 px-1 py-0.5 rounded backdrop-blur">
-              {framing.mode === 'speaker_tracking' ? 'Speaker Tracking' : framing.mode === 'dual_split' ? 'Split Focus' : 'Center Lock'}
+            <div className="absolute bottom-2 left-2 right-2 text-[9px] text-center font-bold text-amber-200 bg-black/80 py-1 px-2 rounded-md backdrop-blur border border-amber-500/20 z-20">
+              16:9 Full Frame • Zero Cropping • Blurred Mirror Fill
             </div>
           </div>
+        ) : (
+          /* 16:9 Cinema Canvas Simulator with Real Local Movie & 9:16 Crop Box */
+          <div className="relative aspect-[16/9] w-full max-w-md mx-auto rounded-lg overflow-hidden border border-neutral-800 bg-neutral-950 flex items-center justify-center">
+            {videoSrc && !videoPlayFailed ? (
+              <video
+                ref={inspectorVideoRef}
+                src={videoSrc}
+                playsInline
+                muted
+                loop
+                autoPlay
+                onError={() => setVideoPlayFailed(true)}
+                className="w-full h-full object-cover"
+              />
+            ) : movieThumbnail ? (
+              <img
+                src={movieThumbnail}
+                alt="Source Frame"
+                className="w-full h-full object-cover opacity-80"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-neutral-500 text-xs gap-1">
+                <span>Local Movie Canvas</span>
+                <span className="text-[10px] text-neutral-600">Select or drop a local file</span>
+              </div>
+            )}
+
+            {/* 9:16 Vertical Box representing the cropped region */}
+            <div
+              className="absolute top-0 bottom-0 aspect-[9/16] border-2 border-rose-500 bg-rose-500/15 shadow-[0_0_18px_rgba(244,63,94,0.35)] transition-all duration-150 flex flex-col justify-between p-1 pointer-events-none"
+              style={{
+                left: `${50 + manualPanOffset * 28}%`,
+                transform: 'translateX(-50%)'
+              }}
+            >
+              <div className="flex justify-between items-center text-[8px] font-bold text-white bg-rose-600/95 px-1 py-0.5 rounded shadow">
+                <span>9:16 CROP</span>
+                <span>LIVE</span>
+              </div>
+
+              <div className="w-full text-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mx-auto shadow ring-2 ring-white/40" />
+              </div>
+
+              <div className="text-[8px] font-mono text-center text-rose-200 bg-black/70 px-1 py-0.5 rounded backdrop-blur">
+                {framing.mode === 'speaker_tracking' ? 'Face & Speaker Tracking' : framing.mode === 'dual_split' ? 'Split Focus' : 'Center Lock'}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* AI Face Tracking & Anti-Blank Space Shield */}
+      <div className="mb-4 bg-gradient-to-r from-emerald-950/30 via-neutral-950 to-neutral-900 border border-emerald-800/40 p-3.5 rounded-xl">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+              <UserCheck className="w-4 h-4" />
+            </div>
+            <div>
+              <h5 className="font-bold text-xs text-white flex items-center gap-1.5 font-['Outfit']">
+                <span>AI Face Tracking Auto-Center</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-extrabold">
+                  {framing.faceTrackingEnabled !== false ? 'ACTIVE' : 'MUTED'}
+                </span>
+              </h5>
+              <p className="text-[10px] text-neutral-400">
+                Scans actor faces across camera angles and steers framing smoothly
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              onChangeFraming({
+                ...framing,
+                faceTrackingEnabled: framing.faceTrackingEnabled === false ? true : false
+              });
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow ${
+              framing.faceTrackingEnabled !== false
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{framing.faceTrackingEnabled !== false ? 'Tracking ON' : 'Tracking OFF'}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2 border-t border-neutral-800/80 text-[10px] text-neutral-300">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span>
+            <strong className="text-emerald-300 font-semibold">Anti-Blank Space Shield:</strong> Pans are mathematically clamped to safe frame geometry, eliminating black empty voids on the edges.
+          </span>
         </div>
       </div>
 

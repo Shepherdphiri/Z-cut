@@ -83,7 +83,12 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
 
     await new Promise(r => setTimeout(r, 600));
     setExportProgress(35);
-    setCurrentStep('Burning in 9:16 vertical crop with speaker centering trajectories...');
+    const isFitBlur = clip.framing.mode === 'fit_blur';
+    setCurrentStep(
+      isFitBlur
+        ? 'Fitting 16:9 widescreen movie into 9:16 frame with ambient blurred mirror background...'
+        : 'Centering actor faces with AI tracking and anti-blank geometry protection...'
+    );
 
     await new Promise(r => setTimeout(r, 700));
     setExportProgress(65);

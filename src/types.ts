@@ -23,6 +23,8 @@ export interface FramingConfig {
   panningTrajectory: FramingKeyframe[];
   zoomFactor: number; // 1.0 to 1.5
   blurBackground: boolean;
+  faceTrackingEnabled?: boolean;
+  antiBlankShield?: boolean;
 }
 
 export interface VideoClip {

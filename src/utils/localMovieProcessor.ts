@@ -132,11 +132,11 @@ export function generateClipsForMovie(
     const hook = hookTemplates[(partNumber - 1) % hookTemplates.length];
     const dialogueSet = dialoguePool[(partNumber - 1) % dialoguePool.length];
 
-    // Framing mode rotation across parts
-    const framingModes: Array<'speaker_tracking' | 'dual_split' | 'center_lock'> = [
+    // Framing mode rotation across parts including fit_blur and speaker tracking
+    const framingModes: Array<'speaker_tracking' | 'dual_split' | 'center_lock' | 'fit_blur'> = [
       'speaker_tracking',
+      'fit_blur',
       'center_lock',
-      'speaker_tracking',
       'dual_split'
     ];
     const framingMode = framingModes[(partNumber - 1) % framingModes.length];
@@ -177,10 +177,12 @@ export function generateClipsForMovie(
       viralReason: `1-minute vertical cut (${startFormatted} - ${endFormatted}) covering whole movie timeline.`,
       framing: {
         mode: framingMode,
-        primarySubject: framingMode === 'dual_split' ? 'Split Dialogue Centering' : 'Speaker Pan Trajectory',
+        primarySubject: framingMode === 'dual_split' ? 'Split Dialogue Centering' : framingMode === 'fit_blur' ? '16:9 Full Frame with Ambient Blur' : 'Speaker Pan Trajectory',
         panningTrajectory,
         zoomFactor: 1.15,
-        blurBackground: true
+        blurBackground: true,
+        faceTrackingEnabled: true,
+        antiBlankShield: true
       },
       dialogue,
       socialCaption: `Part ${partNumber} of ${title} (${startFormatted} - ${endFormatted}). What would you do next? Follow for Part ${partNumber + 1}!`,
