@@ -413,6 +413,34 @@ function drawCinemaVisualizer(
 }
 
 /**
+ * Patches WebM duration metadata in the EBML header so media players recognize the full clip length.
+ */
+async function fixWebmDuration(blob: Blob, durationMs: number): Promise<Blob> {
+  if (!blob.type.includes('webm')) return blob;
+  try {
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    // Find the EBML Duration tag (0x44, 0x89) in the Info Segment header
+    for (let i = 0; i < Math.min(bytes.length - 12, 4096); i++) {
+      if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
+        const len = bytes[i + 2] & 0x0f;
+        const view = new DataView(buffer);
+        if (len === 4) {
+          view.setFloat32(i + 3, durationMs, false);
+          return new Blob([buffer], { type: blob.type });
+        } else if (len === 8) {
+          view.setFloat64(i + 3, durationMs, false);
+          return new Blob([buffer], { type: blob.type });
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('WebM duration patch note:', e);
+  }
+  return blob;
+}
+
+/**
  * Renders a single video clip with zero dragging, locked hardware frame rates, and synced audio
  */
 export async function exportSingleClip(
@@ -465,7 +493,7 @@ export async function exportSingleClip(
   const startSec = Math.max(0, clip.startTime || 0);
   let calculatedDuration = (clip.endTime && clip.endTime > startSec)
     ? (clip.endTime - startSec)
-    : (clip.duration || 12);
+    : (clip.duration || 60);
 
   if (options.customDuration && options.customDuration > 0) {
     calculatedDuration = Math.min(calculatedDuration, options.customDuration);
@@ -492,6 +520,16 @@ export async function exportSingleClip(
       sourceVideo.playsInline = true;
       sourceVideo.preload = 'auto';
 
+      // Keep source video active in DOM offscreen so browser video hardware decoders never throttle
+      sourceVideo.style.position = 'fixed';
+      sourceVideo.style.top = '-9999px';
+      sourceVideo.style.left = '-9999px';
+      sourceVideo.style.width = '4px';
+      sourceVideo.style.height = '4px';
+      sourceVideo.style.opacity = '0.001';
+      sourceVideo.style.pointerEvents = 'none';
+      document.body.appendChild(sourceVideo);
+
       await new Promise<void>((resolve) => {
         const timeout = setTimeout(() => resolve(), 3500);
         sourceVideo!.onloadeddata = () => {
@@ -505,22 +543,32 @@ export async function exportSingleClip(
       });
 
       if (sourceVideo.duration && !isNaN(sourceVideo.duration)) {
-        sourceVideo.currentTime = startSec;
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => resolve(), 2500);
-          sourceVideo!.onseeked = () => {
-            clearTimeout(timeout);
-            videoReady = true;
-            resolve();
-          };
-          sourceVideo!.onerror = () => {
-            clearTimeout(timeout);
-            resolve();
-          };
-        });
+        if (Math.abs(sourceVideo.currentTime - startSec) < 0.05) {
+          videoReady = true;
+        } else {
+          sourceVideo.currentTime = startSec;
+          await new Promise<void>((resolve) => {
+            const timeout = setTimeout(() => {
+              videoReady = true;
+              resolve();
+            }, 3000);
+            sourceVideo!.onseeked = () => {
+              clearTimeout(timeout);
+              videoReady = true;
+              resolve();
+            };
+            sourceVideo!.onerror = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+          });
+        }
+      } else {
+        videoReady = true;
       }
     } catch (e) {
       console.warn('Video element seek warning:', e);
+      videoReady = true;
     }
   }
 
@@ -534,16 +582,16 @@ export async function exportSingleClip(
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioCtx) {
       audioContext = new AudioCtx();
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume().catch(() => {});
+      }
       const dest = audioContext.createMediaStreamDestination();
 
       if (sourceVideo) {
         try {
           const sourceNode = audioContext.createMediaElementSource(sourceVideo);
-          // Connect to destination stream only (not to audioContext.destination)
-          // so the user does NOT hear loud audio blasting during export
           sourceNode.connect(dest);
         } catch (e) {
-          // If already connected or CORS-restricted, try captureStream
           console.warn('WebAudio source note:', e);
           const vStream = (sourceVideo as any).captureStream?.() || (sourceVideo as any).mozCaptureStream?.();
           if (vStream && vStream.getAudioTracks().length > 0) {
@@ -626,7 +674,7 @@ export async function exportSingleClip(
     }
   };
 
-  return new Promise<{ blob: Blob; filename: string }>((resolve, reject) => {
+  return new Promise<{ blob: Blob; filename: string }>((resolve) => {
     let isFinished = false;
     let rvfcId: number | null = null;
     let rafId: number | null = null;
@@ -640,6 +688,9 @@ export async function exportSingleClip(
         try {
           sourceVideo.pause();
           sourceVideo.src = '';
+          if (sourceVideo.parentNode) {
+            sourceVideo.parentNode.removeChild(sourceVideo);
+          }
         } catch {}
       }
       if (rafId !== null) {
@@ -650,17 +701,20 @@ export async function exportSingleClip(
       }
     };
 
-    recorder.onstop = () => {
-      cleanup();
-      onProgress?.(95, 'Finalizing video file container...');
+    recorder.onstop = async () => {
+      onProgress?.(96, 'Finalizing video file container...');
 
       const outputType = selectedMime || (isMp4 ? 'video/mp4' : 'video/webm');
       let finalBlob = new Blob(chunks, { type: outputType });
 
       if (finalBlob.size === 0) {
         finalBlob = createFallbackVideoBlob(clip, resW, resH);
+      } else if (!isMp4) {
+        // Ensure accurate WebM duration metadata so media players don't cut off
+        finalBlob = await fixWebmDuration(finalBlob, clipDuration * 1000);
       }
 
+      cleanup();
       onProgress?.(100, 'Video export ready!');
       resolve({ blob: finalBlob, filename });
     };
@@ -675,10 +729,25 @@ export async function exportSingleClip(
     // Start recorder with 100ms timeslices for smooth buffer streaming
     recorder.start(100);
 
-    const finishRecording = () => {
+    const finishRecording = async () => {
       if (isFinished) return;
       isFinished = true;
-      onProgress?.(92, 'Completing final frame buffers...');
+      onProgress?.(92, 'Encoding final frames and flushing audio buffer...');
+
+      if (sourceVideo) {
+        try { sourceVideo.pause(); } catch {}
+      }
+
+      // Request any buffered data from the MediaRecorder
+      try {
+        if (recorder.state === 'recording') {
+          recorder.requestData();
+        }
+      } catch {}
+
+      // Allow 350ms for the encoder queue to flush trailing frames without cutting off
+      await new Promise((r) => setTimeout(r, 350));
+
       try {
         if (recorder.state !== 'inactive') {
           recorder.stop();
@@ -731,7 +800,21 @@ export async function exportSingleClip(
       });
 
       // Completion check: reached end of clip
-      if (currentMediaTime >= endSec || elapsedInClip >= clipDuration || (sourceVideo && sourceVideo.ended)) {
+      if (elapsedInClip >= clipDuration || currentMediaTime >= endSec || (sourceVideo && sourceVideo.ended)) {
+        // Paint final frame precisely at clipDuration
+        paintExportFrame({
+          ctx,
+          sourceVideo: videoReady ? sourceVideo : null,
+          offscreenBlurCanvas,
+          offscreenBlurCtx,
+          w: resW,
+          h: resH,
+          clip,
+          elapsedSeconds: clipDuration,
+          burnInSubtitles,
+          template,
+          clipDuration
+        });
         finishRecording();
         return;
       }
