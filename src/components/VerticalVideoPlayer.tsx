@@ -51,7 +51,7 @@ interface VerticalVideoPlayerProps {
 export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
   clip,
   videoSrc,
-  subtitlesEnabled = true,
+  subtitlesEnabled = false,
   onToggleSubtitles,
   captionStyle,
   captionPosition,
@@ -78,7 +78,7 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
   const [isDuckingActive, setIsDuckingActive] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
-  const [localSubtitlesEnabled, setLocalSubtitlesEnabled] = useState(true);
+  const [localSubtitlesEnabled, setLocalSubtitlesEnabled] = useState(false);
 
   // Face Tracking and Anti-Blank Geometry State
   const [detectedFaces, setDetectedFaces] = useState<DetectedFace[]>([]);
@@ -347,10 +347,10 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
 
   return (
     <div className="flex flex-col items-center select-none w-full">
-      {/* 9:16 Vertical Video Screen Frame - Fully Mobile Friendly */}
+      {/* 9:16 Vertical Video Screen Frame - Compact Viewport Fit */}
       <div 
         id="vertical-preview-viewport"
-        className="relative w-full max-w-[310px] sm:max-w-[330px] md:max-w-[340px] aspect-[9/16] bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-neutral-800 ring-1 ring-neutral-700/50 flex items-center justify-center group mx-auto"
+        className="relative aspect-[9/16] h-[330px] sm:h-[360px] md:h-[390px] lg:h-[410px] max-h-[calc(100vh-210px)] w-auto bg-black rounded-2xl overflow-hidden shadow-2xl border-2 border-neutral-800 ring-1 ring-neutral-700/50 flex items-center justify-center group mx-auto"
       >
         {/* Background Blurred Ambient Mirror Fill (Synchronized) */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -373,9 +373,9 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
         </div>
 
         {/* Top-Left Live Status Pill: Face Tracking / Fit Blur Indicator */}
-        <div className="absolute top-4 left-4 z-25 flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full border border-neutral-700/60 shadow-lg pointer-events-none">
+        <div className="absolute top-2.5 left-2.5 z-25 flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded-full border border-neutral-700/60 shadow-lg pointer-events-none">
           <span className={`w-1.5 h-1.5 rounded-full ${clip.framing.mode === 'fit_blur' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-          <span className="text-[10px] font-bold text-neutral-200">
+          <span className="text-[9px] font-bold text-neutral-200">
             {clip.framing.mode === 'fit_blur'
               ? '16:9 Fit • Ambient Blur'
               : clip.framing.mode === 'dual_split'
@@ -385,7 +385,7 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
               : 'Anti-Blank Centered'}
           </span>
           {clip.framing.mode !== 'fit_blur' && (
-            <span className="text-[9px] font-mono text-amber-400">
+            <span className="text-[8px] font-mono text-amber-400">
               {currentPan >= 0 ? `+${(currentPan * 100).toFixed(0)}%` : `${(currentPan * 100).toFixed(0)}%`}
             </span>
           )}
@@ -694,17 +694,6 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
           </div>
         )}
 
-        {/* Live Tracking Indicator Tag */}
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-neutral-700/60 pointer-events-none">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span className="text-[10px] font-bold text-neutral-200">
-            {clip.framing.mode === 'speaker_tracking' ? 'Speaker Tracking' : '9:16 Centered'}
-          </span>
-          <span className="text-[10px] font-mono text-amber-400">
-            {currentPan > 0 ? `+${(currentPan * 100).toFixed(0)}%` : `${(currentPan * 100).toFixed(0)}%`}
-          </span>
-        </div>
-
         {/* Subtitles Quick Toggle Pill (Top Overlay) */}
         <button
           onClick={(e) => {
@@ -765,11 +754,11 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
         )}
       </div>
 
-      {/* Playback Controls & Scrubber - Mobile Friendly 44px Touch Targets */}
-      <div className="w-full max-w-[310px] sm:max-w-[330px] md:max-w-[340px] mt-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-3 text-white mx-auto">
+      {/* Playback Controls & Scrubber - Compact Viewport Fit */}
+      <div className="w-full max-w-[240px] sm:max-w-[260px] md:max-w-[275px] mt-2 bg-neutral-900/90 border border-neutral-800 rounded-xl p-2 text-white mx-auto shadow-md">
         {/* Scrubber */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-[11px] font-mono text-neutral-400 w-10 text-right">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[10px] font-mono text-neutral-400 w-8 text-right">
             {currentTime.toFixed(1)}s
           </span>
           <input
@@ -779,23 +768,23 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
             step="0.1"
             value={currentTime}
             onChange={handleSeek}
-            className="flex-1 accent-rose-500 h-2 bg-neutral-800 rounded-lg cursor-pointer py-2"
+            className="flex-1 accent-rose-500 h-1.5 bg-neutral-800 rounded-lg cursor-pointer py-1"
           />
-          <span className="text-[11px] font-mono text-neutral-400 w-10">
+          <span className="text-[10px] font-mono text-neutral-400 w-8">
             {duration.toFixed(1)}s
           </span>
         </div>
 
-        {/* Control Buttons (Min 40-44px touch size) */}
+        {/* Control Buttons */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={togglePlay}
               id="btn-play-pause"
-              className="w-10 h-10 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white flex items-center justify-center transition-colors active:scale-95"
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white flex items-center justify-center transition-colors active:scale-95"
               title={isPlaying ? 'Pause' : 'Play'}
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-white" />}
             </button>
 
             <button
@@ -805,25 +794,25 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
                   setCurrentTime(0);
                 }
               }}
-              className="w-10 h-10 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 flex items-center justify-center transition-colors active:scale-95"
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 flex items-center justify-center transition-colors active:scale-95"
               title="Restart from beginning"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className="w-10 h-10 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 flex items-center justify-center transition-colors active:scale-95"
+              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 flex items-center justify-center transition-colors active:scale-95"
               title={isMuted ? 'Unmute' : 'Mute'}
             >
-              {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
             </button>
 
             {/* Subtitles ON/OFF Button (CC) */}
             <button
               onClick={handleToggleSubtitles}
               id="btn-subtitles-toggle"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all active:scale-95 border ${
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 border ${
                 effectiveSubtitlesEnabled
                   ? 'bg-rose-950/40 text-rose-400 border-rose-500/40 hover:bg-rose-900/50'
                   : 'bg-neutral-800 text-neutral-500 border-neutral-700 hover:text-neutral-300'
@@ -831,20 +820,20 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
               title={effectiveSubtitlesEnabled ? 'Subtitles are ON. Click to turn OFF (CC)' : 'Subtitles are OFF. Click to turn ON (CC)'}
             >
               <div className="relative flex items-center justify-center">
-                <Subtitles className="w-4 h-4" />
+                <Subtitles className="w-3.5 h-3.5" />
                 {!effectiveSubtitlesEnabled && (
-                  <div className="absolute w-5 h-0.5 bg-rose-500 -rotate-45 rounded" />
+                  <div className="absolute w-4 h-0.5 bg-rose-500 -rotate-45 rounded" />
                 )}
               </div>
             </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
-            <div className="flex items-center gap-1 text-amber-400 font-bold bg-neutral-950 px-2.5 py-1 rounded-lg border border-neutral-800">
-              <Flame className="w-3.5 h-3.5 fill-amber-400" />
+          <div className="flex items-center gap-1.5 text-xs">
+            <div className="flex items-center gap-1 text-amber-400 font-bold bg-neutral-950 px-2 py-0.5 rounded-lg border border-neutral-800 text-[10px]">
+              <Flame className="w-3 h-3 fill-amber-400" />
               <span>{clip.viralScore}%</span>
             </div>
-            <span className="text-[11px] text-neutral-400 font-mono hidden xs:inline">9:16</span>
+            <span className="text-[10px] text-neutral-500 font-mono hidden xs:inline">9:16</span>
           </div>
         </div>
       </div>

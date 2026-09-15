@@ -293,7 +293,7 @@ function paintExportFrame(params: {
       const maxShift = Math.max(0, (drawW - w) / 2);
       const clampedShift = Math.max(-maxShift, Math.min(maxShift, panX * maxShift * 0.95));
 
-      const drawX = (w - drawW) / 2 + clampedShift;
+      const drawX = (w - drawW) / 2 - clampedShift;
       const drawY = (h - drawH) / 2;
 
       ctx.drawImage(sourceVideo, drawX, drawY, drawW, drawH);

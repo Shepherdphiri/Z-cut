@@ -8,10 +8,15 @@ import {
   HardDrive,
   Subtitles,
   AlertCircle,
-  X
+  X,
+  Radio,
+  Crop,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
-import { VideoClip, TemplateConfig, AudioTrack } from '../types';
+import { VideoClip, TemplateConfig, AudioTrack, FramingConfig } from '../types';
 import { exportSingleClip, exportBatchClips } from '../utils/clipExporter';
+import { LiveCropTracker } from './LiveCropTracker';
 
 interface CloudExportModalProps {
   clip: VideoClip;
@@ -19,9 +24,11 @@ interface CloudExportModalProps {
   template: TemplateConfig;
   activeAudioTrack: AudioTrack | null;
   videoSrc: string;
+  movieThumbnail?: string;
   subtitlesEnabled?: boolean;
   isPremium?: boolean;
   onOpenUpgrade?: () => void;
+  onUpdateClip?: (updated: VideoClip) => void;
   onClose: () => void;
 }
 
@@ -31,11 +38,15 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
   template,
   activeAudioTrack,
   videoSrc,
+  movieThumbnail,
   subtitlesEnabled = true,
   isPremium = false,
   onOpenUpgrade,
+  onUpdateClip,
   onClose
 }) => {
+  const [activeClipState, setActiveClipState] = useState<VideoClip>(clip);
+  const [showLiveCrop, setShowLiveCrop] = useState<boolean>(true);
   const [resolution, setResolution] = useState<'1080x1920' | '2160x3840' | '720x1280'>('1080x1920');
   const [fps, setFps] = useState<30 | 60>(60);
   const [bitrate, setBitrate] = useState<'standard' | 'high_master'>('high_master');
@@ -47,7 +58,7 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
   const [downloadFilename, setDownloadFilename] = useState<string>('');
   const [exportError, setExportError] = useState<string | null>(null);
   const [isBatchMode, setIsBatchMode] = useState(false);
-  const [burnInSubtitles, setBurnInSubtitles] = useState(subtitlesEnabled);
+  const [burnInSubtitles, setBurnInSubtitles] = useState(subtitlesEnabled ?? false);
   const [durationMode, setDurationMode] = useState<'15' | '30' | 'full'>('15');
 
   const resolutions = [
@@ -122,9 +133,9 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
         a.click();
         document.body.removeChild(a);
       } else {
-        // Single Clip Export
+        // Single Clip Export with Live Recorded Tracking baked in
         const result = await exportSingleClip({
-          clip,
+          clip: activeClipState,
           videoSrc,
           resolution,
           fps,
@@ -320,6 +331,60 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* Live Crop & Manual Tracking Studio for Single Clip Export */}
+            {!isBatchMode && (
+              <div className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowLiveCrop(!showLiveCrop)}
+                  className="w-full p-3 flex items-center justify-between hover:bg-neutral-900/50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded-lg bg-rose-950/60 border border-rose-500/30 text-rose-400">
+                      <Crop className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-white">Live Crop & Manual Tracking</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold bg-rose-600 text-white shadow">
+                          Interactive
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-neutral-400">
+                        Drag the 9:16 crop window or record custom pan tracking to bake into export
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-neutral-400 hidden sm:inline">
+                      {activeClipState.framing?.panningTrajectory?.length || 0} Keyframe Points
+                    </span>
+                    {showLiveCrop ? (
+                      <ChevronUp className="w-4 h-4 text-neutral-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-neutral-400" />
+                    )}
+                  </div>
+                </button>
+
+                {showLiveCrop && (
+                  <div className="p-3 pt-0 border-t border-neutral-900 space-y-2">
+                    <LiveCropTracker
+                      clip={activeClipState}
+                      videoSrc={videoSrc}
+                      movieThumbnail={movieThumbnail}
+                      compact={true}
+                      onUpdateFraming={(updatedFraming: FramingConfig) => {
+                        const updated = { ...activeClipState, framing: updatedFraming };
+                        setActiveClipState(updated);
+                        onUpdateClip?.(updated);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Clip Length & Fast Export Speed Selector */}
             <div>

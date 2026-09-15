@@ -28,7 +28,7 @@ interface CaptionEditorProps {
 }
 
 export const CaptionEditor: React.FC<CaptionEditorProps> = ({
-  subtitlesEnabled = true,
+  subtitlesEnabled = false,
   onToggleSubtitles,
   captionStyle,
   onChangeStyle,
