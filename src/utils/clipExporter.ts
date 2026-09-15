@@ -10,6 +10,7 @@ export interface ExportOptions {
   burnInSubtitles: boolean;
   template: TemplateConfig;
   activeAudioTrack?: AudioTrack | null;
+  customDuration?: number;
   onProgress?: (percent: number, status: string) => void;
 }
 
@@ -69,7 +70,7 @@ function drawFastAmbientBlur(
 }
 
 /**
- * Draws clean, high-contrast, perfectly timed subtitles
+ * Draws clean, high-contrast, perfectly timed subtitles with keyword highlighting & wrapping
  */
 function drawExportSubtitle(
   ctx: CanvasRenderingContext2D,
@@ -87,37 +88,100 @@ function drawExportSubtitle(
   if (!currentLine || !currentLine.text.trim()) return;
 
   ctx.save();
-  const fontSize = Math.max(22, Math.round(w * 0.042));
-  ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  ctx.textAlign = 'center';
+  const fontSize = Math.max(22, Math.round(w * 0.044));
+  ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
-  const text = currentLine.text.trim();
-  const metrics = ctx.measureText(text);
-  const padX = fontSize * 0.75;
-  const padY = fontSize * 0.4;
-  const boxW = Math.min(metrics.width + padX * 2, w * 0.88);
-  const boxH = fontSize + padY * 2;
-  const boxX = (w - boxW) / 2;
-  const boxY = h - Math.round(h * 0.22);
+  const rawWords = currentLine.text.trim().split(/\s+/);
+  const highlightWords = (currentLine.highlightWords || []).map((w) =>
+    w.toLowerCase().replace(/[^\w]/g, '')
+  );
 
-  // Dark backdrop pill
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+  // Group words into lines that fit within max allowed width (w * 0.84)
+  const maxLineW = w * 0.84;
+  const lines: Array<Array<{ word: string; isHighlight: boolean; width: number }>> = [];
+  let currentLineWords: Array<{ word: string; isHighlight: boolean; width: number }> = [];
+  let currentLineW = 0;
+  const spaceW = ctx.measureText(' ').width;
+
+  for (const word of rawWords) {
+    const cleanWord = word.toLowerCase().replace(/[^\w]/g, '');
+    const isHighlight = highlightWords.some(
+      (hw) => cleanWord.includes(hw) || (hw.length > 2 && hw.includes(cleanWord))
+    );
+    const wordW = ctx.measureText(word).width;
+
+    if (currentLineWords.length > 0 && currentLineW + spaceW + wordW > maxLineW) {
+      lines.push(currentLineWords);
+      currentLineWords = [{ word, isHighlight, width: wordW }];
+      currentLineW = wordW;
+    } else {
+      currentLineWords.push({ word, isHighlight, width: wordW });
+      currentLineW += (currentLineWords.length > 1 ? spaceW : 0) + wordW;
+    }
+  }
+  if (currentLineWords.length > 0) {
+    lines.push(currentLineWords);
+  }
+
+  // Calculate container dimensions
+  const lineH = fontSize * 1.35;
+  const padX = fontSize * 0.75;
+  const padY = fontSize * 0.45;
+  const speakerPad = currentLine.speaker ? fontSize * 0.65 : 0;
+  const totalBoxH = lines.length * lineH + padY * 2 + speakerPad;
+
+  let maxComputedW = 0;
+  for (const line of lines) {
+    const lWidth = line.reduce((acc, w) => acc + w.width, 0) + (line.length - 1) * spaceW;
+    if (lWidth > maxComputedW) maxComputedW = lWidth;
+  }
+  const totalBoxW = Math.min(maxComputedW + padX * 2, w * 0.90);
+  const boxX = (w - totalBoxW) / 2;
+  // Positioned in safe zone: 70% from top
+  const boxY = Math.round(h * 0.70);
+
+  // Draw clean translucent backdrop pill
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.86)';
   ctx.beginPath();
   if (typeof ctx.roundRect === 'function') {
-    ctx.roundRect(boxX, boxY, boxW, boxH, 10);
+    ctx.roundRect(boxX, boxY, totalBoxW, totalBoxH, 14);
   } else {
-    ctx.rect(boxX, boxY, boxW, boxH);
+    ctx.rect(boxX, boxY, totalBoxW, totalBoxH);
   }
   ctx.fill();
 
+  // Subtle clean border
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // White text
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(text, w / 2, boxY + boxH / 2 + 1);
+  // Speaker name badge if available
+  let startTextY = boxY + padY + lineH / 2;
+  if (currentLine.speaker) {
+    ctx.save();
+    ctx.font = `bold ${Math.round(fontSize * 0.46)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = '#F59E0B'; // Amber speaker badge
+    ctx.textAlign = 'center';
+    ctx.fillText(currentLine.speaker.toUpperCase(), w / 2, boxY + padY + fontSize * 0.25);
+    ctx.restore();
+    startTextY += speakerPad;
+  }
+
+  // Render lines with keyword colors
+  lines.forEach((line, lIdx) => {
+    const lineW = line.reduce((acc, w) => acc + w.width, 0) + (line.length - 1) * spaceW;
+    let cursorX = (w - lineW) / 2;
+    const lineY = startTextY + lIdx * lineH;
+
+    line.forEach((item) => {
+      ctx.fillStyle = item.isHighlight ? '#FACC15' : '#FFFFFF';
+      ctx.fillText(item.word, cursorX, lineY);
+      cursorX += item.width + spaceW;
+    });
+  });
+
   ctx.restore();
 }
 
@@ -399,9 +463,13 @@ export async function exportSingleClip(
 
   // Calculate start time and exact duration
   const startSec = Math.max(0, clip.startTime || 0);
-  const calculatedDuration = (clip.endTime && clip.endTime > startSec)
+  let calculatedDuration = (clip.endTime && clip.endTime > startSec)
     ? (clip.endTime - startSec)
     : (clip.duration || 12);
+
+  if (options.customDuration && options.customDuration > 0) {
+    calculatedDuration = Math.min(calculatedDuration, options.customDuration);
+  }
   const clipDuration = Math.max(1.5, calculatedDuration);
   const endSec = startSec + clipDuration;
 

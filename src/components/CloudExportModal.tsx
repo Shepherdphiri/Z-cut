@@ -48,6 +48,7 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
   const [exportError, setExportError] = useState<string | null>(null);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [burnInSubtitles, setBurnInSubtitles] = useState(subtitlesEnabled);
+  const [durationMode, setDurationMode] = useState<'15' | '30' | 'full'>('15');
 
   const resolutions = [
     {
@@ -82,6 +83,12 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
     setExportProgress(5);
     setCurrentStep('Preparing render pipeline...');
 
+    const selectedDurationSeconds = durationMode === '15'
+      ? Math.min(15, clip.duration || 15)
+      : durationMode === '30'
+        ? Math.min(30, clip.duration || 30)
+        : undefined;
+
     try {
       if (isBatchMode) {
         // Handle Batch Export
@@ -94,6 +101,7 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
           burnInSubtitles,
           template,
           activeAudioTrack,
+          customDuration: selectedDurationSeconds,
           onProgress: (p, msg) => {
             setExportProgress(p);
             setCurrentStep(msg);
@@ -124,6 +132,7 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
           burnInSubtitles,
           template,
           activeAudioTrack,
+          customDuration: selectedDurationSeconds,
           onProgress: (p, msg) => {
             setExportProgress(p);
             setCurrentStep(msg);
@@ -202,6 +211,20 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                 Your video file has been generated and your download should start automatically.
               </p>
             </div>
+
+            {!isBatchMode && downloadUrl && (
+              <div className="flex justify-center my-2">
+                <video
+                  src={downloadUrl}
+                  controls
+                  playsInline
+                  autoPlay
+                  loop
+                  muted
+                  className="h-48 rounded-xl border border-neutral-800 bg-black aspect-[9/16] shadow-md"
+                />
+              </div>
+            )}
 
             <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 max-w-md mx-auto text-left text-xs space-y-2">
               <div className="flex items-center justify-between text-neutral-400">
@@ -295,6 +318,66 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                     }`}
                   />
                 </button>
+              </div>
+            </div>
+
+            {/* Clip Length & Fast Export Speed Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium text-neutral-300">
+                  Clip Length & Speed
+                </label>
+                <span className="text-[10px] text-emerald-400 font-medium">⚡ Fast Render</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  {
+                    id: '15',
+                    title: '15s Viral Cut',
+                    sub: 'Fastest (~15s) • TikTok & Shorts',
+                    badge: 'Fast'
+                  },
+                  {
+                    id: '30',
+                    title: '30s Standard',
+                    sub: 'Balanced (~30s) • Reels cut',
+                    badge: 'Recommended'
+                  },
+                  {
+                    id: 'full',
+                    title: `Full (${Math.round(clip.duration || 60)}s)`,
+                    sub: 'Full scene segment',
+                    badge: 'Complete'
+                  }
+                ].map((item) => {
+                  const isSel = durationMode === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setDurationMode(item.id as any)}
+                      className={`p-2.5 rounded-xl border text-left transition-all relative ${
+                        isSel
+                          ? 'border-rose-600 bg-neutral-800/80 text-white'
+                          : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-neutral-700 hover:text-neutral-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold ${isSel ? 'text-white' : 'text-neutral-300'}`}>
+                          {item.title}
+                        </span>
+                        <span className={`text-[8px] px-1 py-0.2 rounded border ${
+                          isSel 
+                            ? 'bg-rose-600/30 text-rose-300 border-rose-500/40' 
+                            : 'bg-neutral-800 text-neutral-400 border-neutral-700'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-neutral-400 mt-1 leading-tight">{item.sub}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
