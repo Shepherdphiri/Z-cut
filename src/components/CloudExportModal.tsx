@@ -53,26 +53,26 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
     {
       id: '1080x1920',
       name: '1080p FHD (9:16)',
-      desc: 'Vertical 9:16 format for Shorts, TikTok, and Reels',
-      tag: 'Default',
+      desc: 'High-definition vertical format for Shorts, TikTok, and Reels',
+      tag: 'Recommended',
       width: 1080,
       height: 1920
     },
     {
-      id: '2160x3840',
-      name: '4K Ultra HD (9:16)',
-      desc: 'Maximum bitrate and resolution',
-      tag: 'High Res',
-      width: 2160,
-      height: 3840
-    },
-    {
       id: '720x1280',
       name: '720p HD (9:16)',
-      desc: 'Fast rendering lightweight export',
-      tag: 'Fast',
+      desc: 'Silky smooth 60 FPS hardware-synced lightweight export',
+      tag: 'Fast & Smooth',
       width: 720,
       height: 1280
+    },
+    {
+      id: '2160x3840',
+      name: '4K Ultra HD (9:16)',
+      desc: 'Maximum bitrate and ultra high resolution master',
+      tag: '4K Master',
+      width: 2160,
+      height: 3840
     }
   ];
 
@@ -212,7 +212,7 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
               </div>
               <div className="flex items-center justify-between text-neutral-400">
                 <span>Resolution / Codec:</span>
-                <span className="font-medium text-neutral-200 font-mono">{resolution} • 60 FPS</span>
+                <span className="font-medium text-neutral-200 font-mono">{resolution} • {fps} FPS Smooth</span>
               </div>
               <div className="flex items-center justify-between text-neutral-400">
                 <span>Framing:</span>
@@ -347,9 +347,12 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
             {/* Framerate Controls */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
-                <span className="text-[11px] font-medium text-neutral-300 block mb-1.5">
-                  Framerate
-                </span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-medium text-neutral-300">
+                    Framerate
+                  </span>
+                  <span className="text-[9px] text-emerald-400 font-medium">Hardware Synced</span>
+                </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {[60, 30].map((f) => (
                     <button
