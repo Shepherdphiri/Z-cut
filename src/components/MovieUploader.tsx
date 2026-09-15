@@ -254,8 +254,8 @@ export const MovieUploader: React.FC<MovieUploaderProps> = ({
       {/* Processing State */}
       {isProcessing ? (
         <div className="py-12 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-neutral-800 border border-neutral-700 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
-            <Film className="w-7 h-7 animate-pulse" />
+          <div className="w-14 h-14 rounded-xl bg-neutral-800 border border-neutral-700 text-rose-500 flex items-center justify-center mx-auto">
+            <Film className="w-6 h-6" />
           </div>
 
           <div>

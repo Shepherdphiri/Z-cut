@@ -374,7 +374,7 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
 
         {/* Top-Left Live Status Pill: Face Tracking / Fit Blur Indicator */}
         <div className="absolute top-4 left-4 z-25 flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full border border-neutral-700/60 shadow-lg pointer-events-none">
-          <span className={`w-1.5 h-1.5 rounded-full ${clip.framing.mode === 'fit_blur' ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${clip.framing.mode === 'fit_blur' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
           <span className="text-[10px] font-bold text-neutral-200">
             {clip.framing.mode === 'fit_blur'
               ? '16:9 Fit • Ambient Blur'
@@ -574,7 +574,7 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
 
         {/* Local Video Error Notice */}
         {hasVideoError && videoSrc && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-black z-20">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-neutral-950 z-20">
             <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
               <Scan className="w-6 h-6" />
             </div>
@@ -595,8 +595,8 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
 
         {/* Branded Hook Intro (First 3 seconds) */}
         {template.hookIntro.enabled && currentTime < template.hookIntro.duration && (
-          <div className="absolute top-10 left-3 right-3 z-30 transition-all duration-300 animate-bounce">
-            <div className="bg-rose-600 text-white font-black text-center text-xs sm:text-sm py-2 px-3 rounded-xl shadow-xl border-2 border-white/80 tracking-wide uppercase font-['Outfit']">
+          <div className="absolute top-10 left-3 right-3 z-30 transition-opacity duration-300">
+            <div className="bg-rose-600 text-white font-bold text-center text-xs sm:text-sm py-2 px-3 rounded-lg shadow-lg border border-white/40 tracking-wide uppercase">
               {template.hookIntro.text || clip.hookText}
             </div>
           </div>
@@ -696,7 +696,7 @@ export const VerticalVideoPlayer: React.FC<VerticalVideoPlayerProps> = ({
 
         {/* Live Tracking Indicator Tag */}
         <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full border border-neutral-700/60 pointer-events-none">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           <span className="text-[10px] font-bold text-neutral-200">
             {clip.framing.mode === 'speaker_tracking' ? 'Speaker Tracking' : '9:16 Centered'}
           </span>

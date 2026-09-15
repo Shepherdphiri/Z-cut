@@ -10,8 +10,7 @@ import {
   User,
   Crown,
   ShieldCheck,
-  LogOut,
-  Sparkles
+  LogOut
 } from 'lucide-react';
 import { SqlDatabaseStats } from '../types';
 import { UserAccount } from '../utils/authManager';
@@ -132,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-upgrade-pro"
               onClick={onOpenUpgrade}
-              className="flex items-center gap-1 px-2.5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 text-white text-xs font-bold shadow-md transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-colors"
             >
               <Crown className="w-3.5 h-3.5 text-amber-200" />
               <span className="hidden sm:inline">Upgrade PRO</span>

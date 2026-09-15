@@ -72,10 +72,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
         {/* Modal Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600 to-rose-600 text-white flex items-center justify-center mx-auto mb-3 shadow-lg ring-4 ring-amber-500/20">
-            <Crown className="w-7 h-7" />
+          <div className="w-12 h-12 rounded-xl bg-amber-600 text-white flex items-center justify-center mx-auto mb-3">
+            <Crown className="w-6 h-6" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white font-['Outfit']">
+          <h2 className="text-xl font-bold text-white">
             Upgrade to Z-cut PRO
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
@@ -149,7 +149,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         ) : (
           <button
             onClick={handleRequestActivation}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 text-white font-bold text-xs shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2"
           >
             <Crown className="w-4 h-4" />
             <span>I Have Paid Offline — Request Activation</span>

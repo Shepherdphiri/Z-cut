@@ -56,21 +56,21 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
     <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-white relative overflow-hidden">
       {/* Premium Gate Banner if not premium */}
       {!isPremium && (
-        <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/50 via-neutral-950 to-rose-950/40 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+        <div className="mb-4 p-3.5 rounded-xl bg-neutral-950 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
               <Crown className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-xs font-black text-white font-['Outfit']">
-                  Branding & Watermark Removal is a PRO Feature
+                <h4 className="text-xs font-semibold text-white">
+                  Branding & Watermarks (PRO Feature)
                 </h4>
-                <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-300 border border-amber-500/40">
-                  PRO ONLY
+                <span className="text-[9px] font-semibold uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  PRO
                 </span>
               </div>
-              <p className="text-[11px] text-neutral-300 mt-0.5">
+              <p className="text-[11px] text-neutral-400 mt-0.5">
                 Upgrade to PRO to customize channel watermarks, add viral hook banners, and set custom LUT grades.
               </p>
             </div>
@@ -78,7 +78,7 @@ export const BrandingTemplateDrawer: React.FC<BrandingTemplateDrawerProps> = ({
 
           <button
             onClick={onOpenUpgrade}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 text-white text-xs font-bold shrink-0 flex items-center gap-1.5 shadow active:scale-95 transition-all"
+            className="px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium shrink-0 flex items-center gap-1.5 transition-colors"
           >
             <Crown className="w-3.5 h-3.5" />
             <span>Unlock Branding</span>

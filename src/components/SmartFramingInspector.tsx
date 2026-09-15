@@ -262,48 +262,52 @@ export const SmartFramingInspector: React.FC<SmartFramingInspectorProps> = ({
         )}
       </div>
 
-      {/* AI Face Tracking & Anti-Blank Space Shield */}
-      <div className="mb-4 bg-gradient-to-r from-emerald-950/30 via-neutral-950 to-neutral-900 border border-emerald-800/40 p-3.5 rounded-xl">
+      {/* Face Tracking & Frame Boundary Controls */}
+      <div className="mb-4 bg-neutral-950 border border-neutral-800 p-3.5 rounded-xl">
         <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-neutral-800 text-neutral-300 flex items-center justify-center border border-neutral-700">
               <UserCheck className="w-4 h-4" />
             </div>
             <div>
-              <h5 className="font-bold text-xs text-white flex items-center gap-1.5 font-['Outfit']">
-                <span>AI Face Tracking Auto-Center</span>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-extrabold">
-                  {framing.faceTrackingEnabled !== false ? 'ACTIVE' : 'MUTED'}
+              <h5 className="font-semibold text-xs text-white flex items-center gap-1.5">
+                <span>Face Tracking Auto-Center</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded border font-medium ${
+                  framing.faceTrackingEnabled !== false 
+                    ? 'bg-neutral-800 text-neutral-200 border-neutral-700' 
+                    : 'bg-neutral-900 text-neutral-500 border-neutral-800'
+                }`}>
+                  {framing.faceTrackingEnabled !== false ? 'Enabled' : 'Disabled'}
                 </span>
               </h5>
               <p className="text-[10px] text-neutral-400">
-                Scans actor faces across camera angles and steers framing smoothly
+                Detects subjects across widescreen frames and steers vertical framing
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={() => {
               onChangeFraming({
                 ...framing,
                 faceTrackingEnabled: framing.faceTrackingEnabled === false ? true : false
               });
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               framing.faceTrackingEnabled !== false
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700'
+                ? 'bg-neutral-700 hover:bg-neutral-600 text-white'
+                : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400 border border-neutral-700'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{framing.faceTrackingEnabled !== false ? 'Tracking ON' : 'Tracking OFF'}</span>
+            <span>{framing.faceTrackingEnabled !== false ? 'Turn Off' : 'Turn On'}</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-2 pt-2 border-t border-neutral-800/80 text-[10px] text-neutral-300">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <div className="flex items-center gap-2 pt-2 border-t border-neutral-800 text-[10px] text-neutral-400">
+          <ShieldCheck className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
           <span>
-            <strong className="text-emerald-300 font-semibold">Anti-Blank Space Shield:</strong> Pans are mathematically clamped to safe frame geometry, eliminating black empty voids on the edges.
+            <strong className="text-neutral-300 font-medium">Safe Frame Guard:</strong> Horizontal panning is clamped to safe limits to prevent blank space.
           </span>
         </div>
       </div>

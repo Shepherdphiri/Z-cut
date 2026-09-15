@@ -251,7 +251,7 @@ export const AudioLibraryDrawer: React.FC<AudioLibraryDrawerProps> = ({
             }}
             className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm ${
               isRecordingVoice
-                ? 'bg-rose-600 text-white animate-pulse'
+                ? 'bg-rose-600 text-white'
                 : 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/40'
             }`}
           >
@@ -274,7 +274,7 @@ export const AudioLibraryDrawer: React.FC<AudioLibraryDrawerProps> = ({
       {isRecordingVoice && (
         <div className="mb-4 p-3 rounded-xl bg-rose-950/60 border border-rose-600/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping" />
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
             <div>
               <p className="text-xs font-bold text-white">Recording Voiceover...</p>
               <p className="text-[10px] text-rose-300">Speak into your microphone now</p>
@@ -431,7 +431,7 @@ export const AudioLibraryDrawer: React.FC<AudioLibraryDrawerProps> = ({
                       key={idx}
                       className={`w-1 rounded-full transition-all ${
                         isCurrentlyAuditioning
-                          ? 'bg-rose-400 animate-pulse'
+                          ? 'bg-rose-400'
                           : isSelected
                           ? 'bg-rose-500/70'
                           : 'bg-neutral-700'

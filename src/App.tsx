@@ -289,8 +289,8 @@ export default function App() {
       <main className="flex-1 max-w-7xl mx-auto w-full p-3 sm:p-5 flex flex-col gap-4">
         {isLoadingInitialStorage ? (
           <div className="py-24 text-center space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-neutral-800 text-rose-500 flex items-center justify-center mx-auto animate-pulse shadow-lg">
-              <Film className="w-7 h-7" />
+            <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-neutral-800 text-rose-500 flex items-center justify-center mx-auto">
+              <Film className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-base sm:text-lg font-['Outfit'] text-white">
               Loading Local Storage Movie...

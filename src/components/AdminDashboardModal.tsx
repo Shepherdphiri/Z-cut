@@ -243,7 +243,7 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
                           </span>
 
                           {user.paymentStatus === 'pending' && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-black animate-pulse flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-black flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
                               PAYMENT AWAITING UNBLOCK
                             </span>

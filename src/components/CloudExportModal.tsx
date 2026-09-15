@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { 
-  CloudUpload, 
   Download, 
   CheckCircle2, 
-  Cpu, 
-  Sparkles, 
-  ShieldCheck, 
   FileVideo, 
   Layers, 
   Check, 
-  Zap,
   HardDrive,
-  Subtitles
+  Subtitles,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { VideoClip, TemplateConfig, AudioTrack } from '../types';
+import { exportSingleClip, exportBatchClips } from '../utils/clipExporter';
 
 interface CloudExportModalProps {
   clip: VideoClip;
@@ -46,6 +44,8 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
   const [currentStep, setCurrentStep] = useState('');
   const [downloadReady, setDownloadReady] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadFilename, setDownloadFilename] = useState<string>('');
+  const [exportError, setExportError] = useState<string | null>(null);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [burnInSubtitles, setBurnInSubtitles] = useState(subtitlesEnabled);
 
@@ -53,24 +53,24 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
     {
       id: '1080x1920',
       name: '1080p FHD (9:16)',
-      desc: 'Optimal resolution for TikTok, Instagram Reels & YouTube Shorts',
-      tag: 'Recommended',
+      desc: 'Vertical 9:16 format for Shorts, TikTok, and Reels',
+      tag: 'Default',
       width: 1080,
       height: 1920
     },
     {
       id: '2160x3840',
       name: '4K Ultra HD (9:16)',
-      desc: 'Master studio quality, zero compression artifacts for pro archiving',
-      tag: 'Studio Master',
+      desc: 'Maximum bitrate and resolution',
+      tag: 'High Res',
       width: 2160,
       height: 3840
     },
     {
       id: '720x1280',
       name: '720p HD (9:16)',
-      desc: 'Fast rendering draft for instant preview or mobile messaging',
-      tag: 'Fast Draft',
+      desc: 'Fast rendering lightweight export',
+      tag: 'Fast',
       width: 720,
       height: 1280
     }
@@ -78,155 +78,146 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
 
   const handleStartExport = async () => {
     setIsExporting(true);
-    setExportProgress(10);
-    setCurrentStep('Provisioning cloud rendering container & allocating GPU encoders...');
+    setExportError(null);
+    setExportProgress(5);
+    setCurrentStep('Preparing render pipeline...');
 
-    await new Promise(r => setTimeout(r, 600));
-    setExportProgress(35);
-    const isFitBlur = clip.framing.mode === 'fit_blur';
-    setCurrentStep(
-      isFitBlur
-        ? 'Fitting 16:9 widescreen movie into 9:16 frame with ambient blurred mirror background...'
-        : 'Centering actor faces with AI tracking and anti-blank geometry protection...'
-    );
-
-    await new Promise(r => setTimeout(r, 700));
-    setExportProgress(65);
-    setCurrentStep('Rendering word-by-word synchronized subtitles & hook intro...');
-
-    await new Promise(r => setTimeout(r, 600));
-    setExportProgress(85);
-    setCurrentStep('Mastering audio ducking (320kbps AAC) & normalizing dialogue loudness...');
-
-    // Generate real downloadable video file via canvas and MediaRecorder
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = resolution === '2160x3840' ? 720 : 540; // responsive render
-      canvas.height = resolution === '2160x3840' ? 1280 : 960;
-      const ctx = canvas.getContext('2d');
-
-      if (ctx) {
-        // Draw cinematic poster frame
-        ctx.fillStyle = '#0a0a0a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw header
-        ctx.fillStyle = '#E11D48';
-        ctx.font = 'bold 24px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Z-CUT CLOUD EXPORT', canvas.width / 2, 80);
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 32px sans-serif';
-        ctx.fillText(clip.title, canvas.width / 2, 140);
-
-        // Draw hook
-        ctx.fillStyle = '#F59E0B';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(clip.hookText, canvas.width / 2, 200);
-
-        // Draw metadata info
-        ctx.fillStyle = '#A3A3A3';
-        ctx.font = '18px monospace';
-        ctx.fillText(`Resolution: ${resolution} • 60 FPS`, canvas.width / 2, canvas.height - 120);
-        ctx.fillText(`Viral Score: ${clip.viralScore}/100 • 9:16 Format`, canvas.width / 2, canvas.height - 90);
-        ctx.fillText('Ready for TikTok & Instagram Reels', canvas.width / 2, canvas.height - 60);
-
-        // Stream and record short snippet
-        const stream = canvas.captureStream(30);
-        let recorder: MediaRecorder | null = null;
-        try {
-          recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        } catch {
-          recorder = new MediaRecorder(stream);
-        }
-
-        const chunks: Blob[] = [];
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        };
-
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/mp4' });
-          const url = URL.createObjectURL(blob);
-          setDownloadUrl(url);
-          setDownloadReady(true);
-        };
-
-        recorder.start();
-        setTimeout(() => {
-          if (recorder && recorder.state !== 'inactive') {
-            recorder.stop();
+      if (isBatchMode) {
+        // Handle Batch Export
+        const allowedClips = isPremium ? allClips : allClips.slice(0, 5);
+        const result = await exportBatchClips(allowedClips, {
+          videoSrc,
+          resolution,
+          fps,
+          bitrate,
+          burnInSubtitles,
+          template,
+          activeAudioTrack,
+          onProgress: (p, msg) => {
+            setExportProgress(p);
+            setCurrentStep(msg);
           }
-        }, 800);
-      }
-    } catch (e) {
-      console.warn('Canvas render fallback:', e);
-      // Fallback blob
-      const dummyBlob = new Blob([`Z-cut high-resolution 9:16 export of ${clip.title}`], { type: 'video/mp4' });
-      setDownloadUrl(URL.createObjectURL(dummyBlob));
-      setDownloadReady(true);
-    }
+        });
 
-    await new Promise(r => setTimeout(r, 900));
-    setExportProgress(100);
-    setCurrentStep('Export finished! High-res video ready for download.');
-    setIsExporting(false);
+        const url = URL.createObjectURL(result.blob);
+        setDownloadUrl(url);
+        setDownloadFilename(result.filename);
+        setDownloadReady(true);
+        setIsExporting(false);
+
+        // Auto trigger download for ease of use
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        // Single Clip Export
+        const result = await exportSingleClip({
+          clip,
+          videoSrc,
+          resolution,
+          fps,
+          bitrate,
+          burnInSubtitles,
+          template,
+          activeAudioTrack,
+          onProgress: (p, msg) => {
+            setExportProgress(p);
+            setCurrentStep(msg);
+          }
+        });
+
+        const url = URL.createObjectURL(result.blob);
+        setDownloadUrl(url);
+        setDownloadFilename(result.filename);
+        setDownloadReady(true);
+        setIsExporting(false);
+
+        // Auto trigger download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      setExportError(err?.message || 'Video export encountered an issue. Please try a different resolution.');
+      setIsExporting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-xl w-full p-6 text-white shadow-2xl overflow-hidden relative">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-xl w-full p-6 text-neutral-100 shadow-xl overflow-hidden relative">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 via-red-500 to-amber-500 flex items-center justify-center shadow-lg shadow-rose-950/40">
-              <CloudUpload className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-lg bg-neutral-800 border border-neutral-700 flex items-center justify-center text-rose-500">
+              <FileVideo className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-extrabold text-lg font-['Outfit']">Seamless Cloud Video Export</h2>
+              <h2 className="text-base font-semibold text-white">
+                {isBatchMode ? 'Batch Export Clips' : 'Export Video Clip'}
+              </h2>
               <p className="text-xs text-neutral-400">
-                Studio-grade rendering engine with 60 FPS, smart framing, and auto-captions burned in.
+                {isBatchMode 
+                  ? `Rendering ${isPremium ? allClips.length : Math.min(5, allClips.length)} clips to ZIP`
+                  : clip.title}
               </p>
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 flex items-center justify-center text-sm font-bold"
+            className="w-8 h-8 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Error Notice if any */}
+        {exportError && (
+          <div className="mt-4 p-3 bg-red-950/40 border border-red-800 rounded-lg flex items-center gap-2 text-xs text-red-300">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{exportError}</span>
+          </div>
+        )}
+
+        {/* Finished / Ready State */}
         {downloadReady && downloadUrl ? (
-          <div className="py-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto animate-bounce">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="py-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-extrabold text-xl text-white font-['Outfit']">
-                Cloud Render Complete!
+              <h3 className="font-semibold text-lg text-white">
+                Export Ready
               </h3>
               <p className="text-xs text-neutral-400 mt-1 max-w-md mx-auto">
-                Your video clip is encoded in high-bitrate {resolution} (60fps) with smart speaker centering and animated karaoke subtitles.
+                Your video file has been generated and your download should start automatically.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-950/80 border border-neutral-800 max-w-md mx-auto text-left text-xs space-y-2">
+            <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 max-w-md mx-auto text-left text-xs space-y-2">
               <div className="flex items-center justify-between text-neutral-400">
                 <span>File Name:</span>
-                <span className="font-bold text-white font-mono truncate max-w-[200px]">
-                  ZCut_{clip.title.replace(/\s+/g, '_')}_1080p.mp4
+                <span className="font-medium text-white font-mono truncate max-w-[220px]">
+                  {downloadFilename}
                 </span>
               </div>
               <div className="flex items-center justify-between text-neutral-400">
                 <span>Resolution / Codec:</span>
-                <span className="font-bold text-rose-400 font-mono">{resolution} • H.264 / AAC</span>
+                <span className="font-medium text-neutral-200 font-mono">{resolution} • 60 FPS</span>
               </div>
               <div className="flex items-center justify-between text-neutral-400">
-                <span>Bitrate:</span>
-                <span className="font-bold text-emerald-400 font-mono">
-                  {bitrate === 'high_master' ? '32 Mbps (Studio Master)' : '16 Mbps'}
+                <span>Framing:</span>
+                <span className="font-medium text-neutral-200">
+                  {clip.framing.mode === 'fit_blur' ? '16:9 Fit with Blurred Background' : '9:16 Vertical Pan'}
                 </span>
               </div>
             </div>
@@ -234,38 +225,39 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
             <div className="flex items-center justify-center gap-3 pt-2">
               <a
                 href={downloadUrl}
-                download={`ZCut_${clip.title.replace(/\s+/g, '_')}_${resolution}.mp4`}
-                className="px-6 py-3 rounded-2xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-lg shadow-emerald-950/40 flex items-center gap-2 active:scale-95 transition-all"
+                download={downloadFilename}
+                className="px-5 py-2.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-2 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                <span>Download High-Quality MP4</span>
+                <span>Download Again</span>
               </a>
               <button
                 onClick={onClose}
-                className="px-4 py-3 rounded-2xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+                className="px-4 py-2.5 rounded-lg text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-200"
               >
-                Done
+                Close
               </button>
             </div>
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            {/* Options Row: Batch Mode & Subtitles Toggle */}
+            {/* Options Row: Batch Mode & Subtitles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Batch Export Option */}
-              <div className="p-3 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between">
+              {/* Batch Export */}
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Layers className="w-4 h-4 text-amber-400" />
+                  <Layers className="w-4 h-4 text-neutral-400" />
                   <div>
-                    <p className="text-xs font-bold text-white">Batch Export</p>
+                    <p className="text-xs font-semibold text-white">Batch Export (ZIP)</p>
                     <p className="text-[10px] text-neutral-400">
                       {isPremium 
-                        ? `Export all ${allClips.length} movie clips into ZIP`
-                        : `Export up to ${Math.min(5, allClips.length)} free clips (Upgrade for all ${allClips.length})`}
+                        ? `Export all ${allClips.length} clips in one archive`
+                        : `Export up to ${Math.min(5, allClips.length)} free clips`}
                     </p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsBatchMode(!isBatchMode)}
                   className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
                     isBatchMode ? 'bg-rose-600' : 'bg-neutral-800'
@@ -279,18 +271,19 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                 </button>
               </div>
 
-              {/* Subtitles Option */}
-              <div className="p-3 rounded-2xl bg-neutral-950/80 border border-neutral-800 flex items-center justify-between">
+              {/* Subtitles */}
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Subtitles className={`w-4 h-4 ${burnInSubtitles ? 'text-rose-400' : 'text-neutral-500'}`} />
+                  <Subtitles className="w-4 h-4 text-neutral-400" />
                   <div>
-                    <p className="text-xs font-bold text-white">Burn-in Subtitles</p>
+                    <p className="text-xs font-semibold text-white">Burn-in Subtitles</p>
                     <p className="text-[10px] text-neutral-400">
-                      {burnInSubtitles ? 'Burned into video' : 'Clean export without text'}
+                      {burnInSubtitles ? 'Subtitles rendered into video' : 'Export clean video without text'}
                     </p>
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setBurnInSubtitles(!burnInSubtitles)}
                   className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
                     burnInSubtitles ? 'bg-rose-600' : 'bg-neutral-800'
@@ -305,10 +298,10 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
               </div>
             </div>
 
-            {/* Resolution Presets */}
+            {/* Resolution Selection */}
             <div>
-              <label className="text-xs font-semibold text-neutral-300 mb-2 block">
-                Target Resolution & Aspect Ratio
+              <label className="text-xs font-medium text-neutral-300 mb-2 block">
+                Format & Resolution
               </label>
               <div className="space-y-2">
                 {resolutions.map((r) => {
@@ -317,22 +310,22 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                     <div
                       key={r.id}
                       onClick={() => setResolution(r.id as any)}
-                      className={`cursor-pointer p-3 rounded-2xl border transition-all flex items-center justify-between ${
+                      className={`cursor-pointer p-3 rounded-xl border transition-colors flex items-center justify-between ${
                         isSelected
-                          ? 'border-rose-500 bg-rose-950/25 ring-1 ring-rose-500/50'
-                          : 'border-neutral-800 bg-neutral-950/50 hover:border-neutral-700'
+                          ? 'border-rose-600 bg-neutral-800/80'
+                          : 'border-neutral-800 bg-neutral-950 hover:border-neutral-700'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs ${
                           isSelected ? 'bg-rose-600 text-white' : 'bg-neutral-800 text-neutral-400'
                         }`}>
                           <FileVideo className="w-4 h-4" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-white font-['Outfit']">{r.name}</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            <span className="text-xs font-medium text-white">{r.name}</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-300 border border-neutral-700">
                               {r.tag}
                             </span>
                           </div>
@@ -340,10 +333,10 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                         </div>
                       </div>
 
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
                         isSelected ? 'bg-rose-600 text-white' : 'border border-neutral-700'
                       }`}>
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
                       </div>
                     </div>
                   );
@@ -351,19 +344,20 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
               </div>
             </div>
 
-            {/* Framerate & Bitrate Controls */}
+            {/* Framerate Controls */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-neutral-950/60 border border-neutral-800 p-3 rounded-xl">
-                <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5">
-                  Frame Rate (FPS)
+              <div className="bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
+                <span className="text-[11px] font-medium text-neutral-300 block mb-1.5">
+                  Framerate
                 </span>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-2 gap-1.5">
                   {[60, 30].map((f) => (
                     <button
                       key={f}
+                      type="button"
                       onClick={() => setFps(f as any)}
-                      className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        fps === f ? 'bg-rose-600 text-white' : 'bg-neutral-800 text-neutral-400'
+                      className={`py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        fps === f ? 'bg-rose-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
                       }`}
                     >
                       {f} FPS
@@ -372,20 +366,21 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-neutral-950/60 border border-neutral-800 p-3 rounded-xl">
-                <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5">
-                  Encoding Bitrate
+              <div className="bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
+                <span className="text-[11px] font-medium text-neutral-300 block mb-1.5">
+                  Bitrate Quality
                 </span>
-                <div className="grid grid-cols-2 gap-1">
+                <div className="grid grid-cols-2 gap-1.5">
                   {[
-                    { id: 'high_master', label: '32M Pro' },
-                    { id: 'standard', label: '16M Std' }
+                    { id: 'high_master', label: 'High' },
+                    { id: 'standard', label: 'Standard' }
                   ].map((b) => (
                     <button
                       key={b.id}
+                      type="button"
                       onClick={() => setBitrate(b.id as any)}
-                      className={`py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        bitrate === b.id ? 'bg-rose-600 text-white' : 'bg-neutral-800 text-neutral-400'
+                      className={`py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        bitrate === b.id ? 'bg-rose-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
                       }`}
                     >
                       {b.label}
@@ -397,17 +392,16 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
 
             {/* Export Progress Bar */}
             {isExporting && (
-              <div className="p-3.5 rounded-xl bg-neutral-950 border border-rose-500/40 space-y-2 animate-pulse">
+              <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-rose-400 font-bold flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5 animate-spin" />
+                  <span className="text-neutral-300 font-medium truncate pr-2">
                     {currentStep}
                   </span>
-                  <span className="font-mono text-neutral-300">{exportProgress}%</span>
+                  <span className="font-mono text-neutral-400">{exportProgress}%</span>
                 </div>
-                <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-neutral-800 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-rose-600 to-amber-500 transition-all duration-300"
+                    className="h-full bg-rose-600 transition-all duration-200"
                     style={{ width: `${exportProgress}%` }}
                   />
                 </div>
@@ -416,33 +410,35 @@ export const CloudExportModal: React.FC<CloudExportModalProps> = ({
 
             {/* Action Buttons */}
             <div className="pt-3 border-t border-neutral-800 flex items-center justify-between">
-              <div className="flex items-center gap-1 text-[11px] text-neutral-400">
-                <HardDrive className="w-3.5 h-3.5 text-rose-400" />
-                <span>Cloud rendering • Zero CPU drain on client</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+                <HardDrive className="w-3.5 h-3.5" />
+                <span>Direct in-browser render & download</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+                  className="px-4 py-2 rounded-lg text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
                 >
                   Cancel
                 </button>
                 <button
                   id="btn-confirm-export"
+                  type="button"
                   onClick={handleStartExport}
                   disabled={isExporting}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white shadow-lg shadow-rose-950/50 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                  className="px-5 py-2 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-2 transition-colors disabled:opacity-50"
                 >
                   {isExporting ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Cloud Encoding ({exportProgress}%)...</span>
+                      <span>Exporting ({exportProgress}%)...</span>
                     </>
                   ) : (
                     <>
-                      <CloudUpload className="w-3.5 h-3.5" />
-                      <span>{isBatchMode ? `Export All ${allClips.length} Clips (ZIP)` : 'Start Cloud Export'}</span>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isBatchMode ? `Export ${allClips.length} Clips` : 'Export Clip'}</span>
                     </>
                   )}
                 </button>
